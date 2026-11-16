@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ORIGO — 複素数平面の変換対局</title>
+<meta name="description" content="格子点の上で、回転・対称移動・拡大縮小・複素数倍という変換そのものを駒の動きにした対戦ボードゲーム。">
+<style>
+:root{
+  --bg:#0d111b;--panel:#151b29;--panel2:#1b2233;--line:#2a3348;--grid:#27304a;--axis:#55618a;
+  --ink:#e6e9f2;--mute:#8d96ad;--me:#e8b866;--me-ink:#1c1405;--op:#5cb6cc;--op-ink:#04181e;
+  --warn:#e2685f;--ok:#8fd0a0;
+  --serif:"Times New Roman",Times,"Noto Serif JP","Hiragino Mincho ProN",serif;
+  --sans:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI","Yu Gothic",Meiryo,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-text-size-adjust:100%}
+body{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center}
+button{font:inherit;color:inherit;cursor:pointer}
+header{width:100%;max-width:1060px;display:flex;align-items:baseline;gap:14px;padding:14px 16px 6px}
+h1{font-family:var(--serif);font-weight:400;font-size:26px;letter-spacing:.22em;margin:0}
+h1 b{font-weight:400;color:var(--me)}
+header .sub{color:var(--mute);font-size:12px;letter-spacing:.08em;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tog{display:flex;gap:6px}
+.chip{background:transparent;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12px;color:var(--mute);white-space:nowrap}
+.chip[aria-pressed="true"]{color:var(--ink);border-color:var(--axis);background:var(--panel2)}
+.chip:hover{border-color:var(--axis)}
+main{width:100%;max-width:1060px;display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;padding:6px 16px 20px;align-items:start}
+#boardWrap{position:relative;width:100%;max-width:min(680px,calc(100dvh - 215px));margin:0 auto}
+#board{display:block;width:100%;height:auto;touch-action:manipulation;user-select:none;-webkit-user-select:none;overflow:visible}
+#status{display:flex;align-items:center;gap:10px;min-height:40px;padding:6px 4px;font-size:14px}
+#status .dot{width:10px;height:10px;border-radius:50%;background:var(--mute);flex:none}
+#status.me .dot{background:var(--me)}#status.op .dot{background:var(--op)}
+#status.warn #stText{color:var(--warn)}
+#stText{flex:1}
+#plyNo{color:var(--mute);font-size:12px;font-variant-numeric:tabular-nums}
+#formula{min-height:64px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 13px;margin-top:8px}
+#formula .t{font-size:12px;color:var(--mute);letter-spacing:.05em}
+#formula .f{font-family:var(--serif);font-size:19px;font-style:italic;margin-top:2px;white-space:nowrap;overflow-x:auto}
+#formula .f .n{font-style:normal}
+#formula .f small{font-size:14px;color:var(--mute);font-style:normal;margin-left:10px}
+.ov{text-decoration:overline}
+aside{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 13px}
+.card h2{margin:0 0 8px;font-size:12px;font-weight:600;color:var(--mute);letter-spacing:.12em}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 8px;font-size:13px}
+.btn:hover{border-color:var(--axis)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.pri{background:var(--me);color:var(--me-ink);border-color:var(--me);font-weight:600}
+.goal{font-size:13px;line-height:1.75;margin:0;padding-left:1.2em}
+.goal b{color:var(--me);font-weight:600}
+.leg{display:grid;grid-template-columns:40px 1fr;gap:4px 10px;align-items:center;padding:6px 4px;border-radius:8px;border:1px solid transparent}
+.leg+.leg{margin-top:2px}
+.leg.on{border-color:var(--axis);background:var(--panel2)}
+.leg svg{width:38px;height:38px;grid-row:span 2}
+.leg .nm{font-size:13px}
+.leg .nm i{font-family:var(--serif);font-size:15px;color:var(--me);margin-left:6px}
+.leg .ds{font-size:11.5px;color:var(--mute);line-height:1.45}
+.cap{display:flex;justify-content:space-between;font-size:12px;color:var(--mute);gap:8px}
+.cap span b{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink);margin-left:3px}
+/* 盤 */
+.g-line{stroke:var(--grid);stroke-width:1.2}
+.g-axis{stroke:var(--axis);stroke-width:1.6}
+.g-lab{fill:var(--mute);font-family:var(--serif);font-size:17px;font-style:italic}
+.g-pt{fill:#3a4566}
+.pc{cursor:pointer}
+.pc .disc{stroke-width:2.5}
+.pc.me .disc{fill:var(--me);stroke:#f6dba6}.pc.op .disc{fill:var(--op);stroke:#a9e0ee}
+.pc.me .gl{fill:var(--me-ink);stroke:var(--me-ink)}.pc.op .gl{fill:var(--op-ink);stroke:var(--op-ink)}
+.pc .gl{font-family:var(--serif);font-style:italic;font-weight:700;text-anchor:middle;stroke-width:0}
+.pc .gl.ln{stroke-width:2.6;fill:none}
+.pc.sel .disc{stroke:#fff;stroke-width:4}
+.pc.chk .disc{stroke:var(--warn);stroke-width:5}
+.pc.dim{opacity:.55}
+.dst{cursor:pointer}
+.dst .hit{fill:transparent}
+.dst .mk{fill:var(--me);opacity:.9}
+.dst.cap .mk{fill:none;stroke:var(--warn);stroke-width:4;opacity:1}
+.dst.ro .mk{fill:var(--op)}.dst.ro.cap .mk{fill:none;stroke:var(--op)}
+.dst.ro{cursor:default}
+.cons{fill:none;stroke:var(--me);stroke-width:2;stroke-dasharray:5 6;opacity:.3;pointer-events:none}
+.cons.ro{stroke:var(--op)}
+.cons.hot{opacity:1;stroke-width:3;stroke-dasharray:none}
+.axisln{stroke:#fff;stroke-width:1.6;stroke-dasharray:10 6;opacity:.75;pointer-events:none}
+.pivot{fill:none;stroke:#fff;stroke-width:2.5;stroke-dasharray:4 5;pointer-events:none}
+.ray{stroke:#fff;stroke-width:1.2;opacity:.5;pointer-events:none}
+.last{fill:none;stroke:#fff;stroke-width:2.2;opacity:.34;pointer-events:none}
+.lastdot{fill:#fff;opacity:.3}
+.thr{fill:var(--warn);opacity:.8;pointer-events:none}
+.thrR{fill:none;stroke:var(--warn);stroke-width:2;stroke-dasharray:3 5;opacity:.9;pointer-events:none}
+.orig{fill:none;stroke:var(--me);stroke-width:1.6;opacity:.75}
+.orig.hot{stroke-width:3;animation:pulse 1.1s ease-in-out infinite}
+.orig.danger{stroke:var(--warn)}
+@keyframes pulse{50%{opacity:.25}}
+/* モーダル */
+.modal{position:fixed;inset:0;background:rgba(5,8,14,.72);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+.modal.show{display:flex}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:560px;width:100%;max-height:92dvh;overflow:auto;padding:22px 22px 18px}
+.sheet h2{font-family:var(--serif);font-weight:400;letter-spacing:.14em;font-size:22px;margin:0 0 4px}
+.sheet h3{font-size:13px;color:var(--me);letter-spacing:.1em;margin:18px 0 6px;font-weight:600}
+.sheet p,.sheet li{font-size:13.5px;line-height:1.8;color:#cfd4e2}
+.sheet p{margin:6px 0}
+.sheet ul,.sheet ol{margin:4px 0;padding-left:1.3em}
+.sheet .lead{color:var(--mute);font-size:12.5px}
+.sheet .mf{font-family:var(--serif);font-style:italic;font-size:19px;text-align:center;padding:10px;margin:10px 0;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
+.opt{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+.opt button{flex:1;min-width:84px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 6px;font-size:13px}
+.opt button small{display:block;color:var(--mute);font-size:11px;margin-top:2px}
+.opt button[aria-pressed="true"]{border-color:var(--me);color:var(--me)}
+.sheet .row{display:flex;gap:8px;margin-top:18px}
+.sheet .row .btn{flex:1;padding:11px}
+table.pt{width:100%;border-collapse:collapse;font-size:13px}
+table.pt td{padding:7px 6px;border-top:1px solid var(--line);vertical-align:top;line-height:1.6}
+table.pt td:first-child{white-space:nowrap}
+table.pt i{font-family:var(--serif);font-size:15px;color:var(--me)}
+textarea{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;resize:vertical;min-height:64px;word-break:break-all}
+#resTitle{font-size:26px}
+#resSub{font-size:14px;color:var(--mute)}
+@media (max-width:860px){
+  main{grid-template-columns:1fr;padding:4px 10px 20px}
+  header{padding:10px 12px 4px;gap:8px}
+  h1{font-size:21px}
+  header .sub{display:none}
+  .tog{margin-left:auto}
+  #boardWrap{max-width:min(100%,calc(100dvh - 210px));min-width:min(100%,300px)}
+  #formula .f{font-size:16px}
+}
+@media (prefers-reduced-motion:reduce){.orig.hot{animation:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>ORIG<b>O</b></h1>
+  <div class="sub">複素数平面の変換対局</div>
+  <div class="tog">
+    <button class="chip" id="tgMusic" aria-pressed="true">音楽</button>
+    <button class="chip" id="tgSfx" aria-pressed="true">効果音</button>
+    <button class="chip" id="tgThreat" aria-pressed="true" title="相手の駒が次に跳べる点を表示">相手の利き</button>
+  </div>
+</header>
+<main>
+  <section>
+    <div id="status"><span class="dot"></span><span id="stText"></span><span id="plyNo"></span></div>
+    <div id="boardWrap">
+      <svg id="board" viewBox="0 0 700 700" role="img" aria-label="盤面（複素数平面の格子点）"></svg>
+    </div>
+    <div id="formula"><div class="t" id="fmT">駒に触れると、跳べる点と変換が表示されます</div><div class="f" id="fmF">z′ = c + w(z − c)</div></div>
+  </section>
+  <aside>
+    <div class="card">
+      <h2>勝利条件</h2>
+      <ol class="goal">
+        <li>相手の<b>核</b>を詰める（逃げ場をなくす）</li>
+        <li>自分の<b>核</b>を<b>原点 O</b> に置き、相手の 1 手をしのぐ</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h2>駒と変換　<span style="font-weight:400;letter-spacing:0">c は味方の駒（中心）</span></h2>
+      <div id="legend"></div>
+    </div>
+    <div class="card">
+      <div class="cap"><span>取った駒<b id="capMe">—</b></span><span>取られた駒<b id="capOp">—</b></span></div>
+    </div>
+    <div class="card">
+      <div class="btns">
+        <button class="btn" id="btNew">新しい対局</button>
+        <button class="btn" id="btUndo">一手戻す</button>
+        <button class="btn" id="btRules">ルール</button>
+        <button class="btn" id="btRec">棋譜コード</button>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<div class="modal" id="mdStart"><div class="sheet">
+  <h2>ORIGO</h2>
+  <p class="lead">複素数平面の格子点で戦う、変換の対局。1局 5〜10 分。</p>
+  <div class="mf">z′ = c + w(z − c)</div>
+  <ul>
+    <li>核以外の駒は、<b>味方の駒 c を中心</b>にした変換（回転・拡大縮小・対称移動・複素数倍）で跳びます。途中の駒は関係ありません。</li>
+    <li>跳んだ先に相手の駒があれば取ります。味方が減ると中心も減り、動きが痩せます。</li>
+    <li>相手の核を<b>詰める</b>か、自分の核を<b>原点 O</b> に置いて相手の 1 手をしのげば勝ち。</li>
+  </ul>
+  <h3>CPU の強さ</h3>
+  <div class="opt" id="optLv"></div>
+  <h3>手番</h3>
+  <div class="opt" id="optFirst">
+    <button data-v="1">先手</button><button data-v="-1">後手</button><button data-v="0">おまかせ</button>
+  </div>
+  <div class="row"><button class="btn" id="stRules">ルール詳細</button><button class="btn pri" id="stGo">対局開始</button></div>
+</div></div>
+
+<div class="modal" id="mdRules"><div class="sheet">
+  <h2>ルール</h2>
+  <p class="lead">盤は複素数平面の格子点 x + yi（x, y は −3〜3 の整数）、全 49 点。</p>
+  <h3>進め方</h3>
+  <ul>
+    <li>交互に、自分の駒を 1 つ動かします。パスはできません。</li>
+    <li>移動先に相手の駒があれば取ります。味方の駒がある点には動けません。</li>
+    <li>自分の核が取られる状態になる手、同じ局面を 3 回目にする手は指せません。</li>
+  </ul>
+  <h3>勝敗</h3>
+  <ul>
+    <li><b>詰み</b>：相手に指せる手がなくなれば勝ち。</li>
+    <li><b>原点制圧</b>：自分の核を原点 O に置き、相手が次の 1 手でその核を狙えなければ勝ち。狙われたら通常どおり受けます（相手の利きがある間は原点に入れません）。</li>
+    <li>120 手で決着しなければ引き分け。</li>
+  </ul>
+  <h3>駒の動き</h3>
+  <p>核以外の駒は、味方の駒のどれか 1 つを中心 c に選び、自分の位置 z を次の式で移します。行き先が格子点で盤内なら跳べます（途中に駒があってもよい）。</p>
+  <table class="pt">
+    <tr><td>核</td><td><i>z′ = z + u</i>　u = 1, i, −1, −i（上下左右に 1）</td></tr>
+    <tr><td>回転子 <i>i</i></td><td><i>z′ = c ± i(z − c)</i>　c を中心に ±90° 回転</td></tr>
+    <tr><td>拡大子 <i>k</i></td><td><i>z′ = c + k(z − c)</i>　k = 2, −2, ½, −½, −1。c から見て同じ直線上を伸縮。k = −1 は点対称、½ は中点</td></tr>
+    <tr><td>鏡映子 <i>z̄</i></td><td>c を通る 横・縦・傾き ±1 の直線に関して対称移動。式では <i>c ± <span class="ov">z − c</span></i>、<i>c ± i·<span class="ov">z − c</span></i></td></tr>
+    <tr><td>螺旋子 <i>1+i</i></td><td><i>z′ = c + (1 ± i)(z − c)</i>：±45° 回転して √2 倍。逆向きの <i>½(1 ± i)</i> 倍（±45° 回転して 1/√2 倍）も可</td></tr>
+  </table>
+  <h3>読みのコツ</h3>
+  <ul>
+    <li>駒を 1 つ動かすと、それを中心にしていた味方すべての行き先が変わります。</li>
+    <li>相手の攻め駒が取れなくても、<b>中心になっている駒</b>を取れば攻めは消えます。</li>
+    <li>相手の駒に触れると、その駒が次に跳べる点を確認できます。</li>
+  </ul>
+  <div class="row"><button class="btn pri" data-close>閉じる</button></div>
+</div></div>
+
+<div class="modal" id="mdRec"><div class="sheet">
+  <h2>棋譜コード</h2>
+  <p class="lead">手番・乱数の種・手順だけで、この対局を最初から再現できます。</p>
+  <textarea id="recOut" readonly></textarea>
+  <div class="row" style="margin-top:8px"><button class="btn" id="recCopy">コピー</button></div>
+  <h3>読み込み</h3>
+  <textarea id="recIn" placeholder="ORIGO1. で始まるコードを貼り付け"></textarea>
+  <p class="lead" id="recMsg"></p>
+  <div class="row"><button class="btn" data-close>閉じる</button><button class="btn pri" id="recLoad">この局面から再開</button></div>
+</div></div>
+
+<div class="modal" id="mdRes"><div class="sheet" style="max-width:420px;text-align:center">
+  <h2 id="resTitle"></h2>
+  <p id="resSub"></p>
+  <p class="lead" id="resStat"></p>
+  <div class="row"><button class="btn" id="resView">盤面を見る</button><button class="btn pri" id="resNew">もう一局</button></div>
+</div></div>
+
+<script>
+/*ENGINE-BEGIN*/
+// ============================================================
+// ゲームエンジン（描画・音・DOM に依存しない純粋なロジック）
+//  - 状態 state は単なるデータ。apply(state, {from,to}) が新しい状態を返す（決定的）
+//  - 乱数は rng(seed) のみ。Math.random は使わない
+// ============================================================
+const Engine=(function(){
+'use strict';
+// 盤: 複素数平面の格子点 x,y ∈ [-3,3]。index=(y+3)*7+(x+3)。原点は 24
+const N=7,H=3,NN=49,O=24;
+const K=1,ROT=2,MIR=3,SCA=4,SPI=5;
+const X=new Int8Array(NN),Y=new Int8Array(NN);
+for(let i=0;i<NN;i++){X[i]=i%N-H;Y[i]=Math.floor(i/N)-H;}
+const idx=(x,y)=>(y+H)*N+(x+H);
+const inb=(x,y)=>x>=-H&&x<=H&&y>=-H&&y<=H;
+const RULES={plyLimit:120,repeatMax:2};
+// 変換表: (a,b)=z−c に対する作用。f は [a',b'] か null（格子点に乗らない）
+// w は極形式で補間できる乗数（アニメーション用）
+const TF={};
+TF[ROT]=[
+ {id:'i',w:[0,1],f:(a,b)=>[-b,a]},
+ {id:'-i',w:[0,-1],f:(a,b)=>[b,-a]}];
+TF[SCA]=[
+ {id:'2',f:(a,b)=>[2*a,2*b]},
+ {id:'-2',f:(a,b)=>[-2*a,-2*b]},
+ {id:'1/2',f:(a,b)=>(a&1)||(b&1)?null:[a/2,b/2]},
+ {id:'-1/2',f:(a,b)=>(a&1)||(b&1)?null:[-a/2,-b/2]},
+ {id:'-1',f:(a,b)=>[-a,-b]}];
+TF[MIR]=[
+ {id:'h',f:(a,b)=>[a,-b]},
+ {id:'v',f:(a,b)=>[-a,b]},
+ {id:'d',f:(a,b)=>[b,a]},
+ {id:'a',f:(a,b)=>[-b,-a]}];
+TF[SPI]=[
+ {id:'1+i',w:[1,1],f:(a,b)=>[a-b,a+b]},
+ {id:'1-i',w:[1,-1],f:(a,b)=>[a+b,b-a]},
+ {id:'(1+i)/2',w:[.5,.5],f:(a,b)=>((a+b)&1)?null:[(a-b)/2,(a+b)/2]},
+ {id:'(1-i)/2',w:[.5,-.5],f:(a,b)=>((a+b)&1)?null:[(a+b)/2,(b-a)/2]}];
+const KTF={id:'+'};
+const KD=[[1,0],[0,1],[-1,0],[0,-1]];
+// 初期配置 [種類,x,y]（先手=下側）。後手は原点対称 z→−z
+const SETUP=[[K,0,-3],[ROT,-2,-3],[ROT,2,-3],[MIR,1,-2],[SCA,-1,-2],[SPI,0,-2]];
+// 疑似合法手（自分の核の安全を見ない）。out に from*49+to を積み、個数を返す
+const mark=new Int32Array(NN);let stamp=0;
+function gen(b,side,out){
+ let n=0;const ps=[];
+ for(let i=0;i<NN;i++)if(b[i]*side>0)ps.push(i);
+ for(let pi=0;pi<ps.length;pi++){
+  const p=ps[pi],t=b[p]*side,x=X[p],y=Y[p];stamp++;
+  if(t===K){
+   for(let d=0;d<4;d++){const nx=x+KD[d][0],ny=y+KD[d][1];if(!inb(nx,ny))continue;
+    const q=idx(nx,ny);if(b[q]*side>0)continue;out[n++]=p*NN+q;}
+   continue;}
+  const l=TF[t];
+  for(let ci=0;ci<ps.length;ci++){if(ci===pi)continue;
+   const c=ps[ci],cx=X[c],cy=Y[c],dx=x-cx,dy=y-cy;
+   for(let k=0;k<l.length;k++){const r=l[k].f(dx,dy);if(!r)continue;
+    const nx=cx+r[0],ny=cy+r[1];if(!inb(nx,ny))continue;
+    const q=idx(nx,ny);if(q===p||b[q]*side>0||mark[q]===stamp)continue;
+    mark[q]=stamp;out[n++]=p*NN+q;}}}
+ return n;
+}
+function kingPos(b,side){for(let i=0;i<NN;i++)if(b[i]===side*K)return i;return -1;}
+const tmpA=new Int32Array(512);
+function attacked(b,sq,by){const n=gen(b,by,tmpA);for(let i=0;i<n;i++)if(tmpA[i]%NN===sq)return true;return false;}
+function inCheck(b,side){const k=kingPos(b,side);return k<0||attacked(b,k,-side);}
+function key(b,turn){let s=turn>0?'+':'-';for(let i=0;i<NN;i++)s+=String.fromCharCode(70+b[i]);return s;}
+// 合法手: 核を取られる手、同一局面を3回目にする手は指せない
+function legal(b,side,rep){
+ b=b.slice();
+ const buf=new Int32Array(512),n=gen(b,side,buf),res=[];
+ for(let i=0;i<n;i++){const m=buf[i],f=(m/NN)|0,t=m%NN,cap=b[t];
+  b[t]=b[f];b[f]=0;
+  if(!inCheck(b,side)&&!(rep&&(rep[key(b,-side)]||0)>=RULES.repeatMax))res.push(m);
+  b[f]=b[t];b[t]=cap;}
+ return res;
+}
+// 手 from→to を実現する (中心 c, 変換 tf) の一覧（表示用。結果は from,to だけで決まる）
+function explain(b,from,to){
+ const side=Math.sign(b[from]),t=Math.abs(b[from]),res=[];
+ if(t===K)return [{c:-1,tf:KTF}];
+ for(let c=0;c<NN;c++){if(c===from||b[c]*side<=0)continue;
+  const dx=X[from]-X[c],dy=Y[from]-Y[c];
+  for(const tf of TF[t]){const r=tf.f(dx,dy);if(r&&inb(X[c]+r[0],Y[c]+r[1])&&idx(X[c]+r[0],Y[c]+r[1])===to)res.push({c,tf});}}
+ return res;
+}
+// opt:{seed, first:1|-1}
+function newGame(opt){
+ opt=opt||{};const b=new Array(NN).fill(0);
+ for(const [t,x,y] of SETUP){b[idx(x,y)]=t;b[idx(-x,-y)]=-t;}
+ const first=opt.first<0?-1:1;
+ const s={b,turn:first,first,ply:0,seed:(opt.seed>>>0)||1,rep:{},result:null,last:null,log:[]};
+ s.rep[key(b,first)]=1;return s;
+}
+// 1手 = {from,to}。不正な手なら null
+function apply(s,a){
+ if(s.result)return null;
+ const m=a.from*NN+a.to;
+ if(legal(s.b,s.turn,s.rep).indexOf(m)<0)return null;
+ const b=s.b.slice(),cap=b[a.to];b[a.to]=b[a.from];b[a.from]=0;
+ const n={b,turn:-s.turn,first:s.first,ply:s.ply+1,seed:s.seed,rep:Object.assign({},s.rep),result:null,
+  last:{from:a.from,to:a.to,cap},log:s.log.concat([m])};
+ const k=key(b,n.turn);n.rep[k]=(n.rep[k]||0)+1;
+ // 原点制圧: 核が原点にあり、相手がいま指した手でも狙えていなければ、核の持ち主の勝ち
+ if(b[O]===n.turn*K&&!attacked(b,O,s.turn))n.result={winner:n.turn,reason:'origin'};
+ else if(legal(b,n.turn,n.rep).length===0)n.result={winner:s.turn,reason:inCheck(b,n.turn)?'mate':'stale'};
+ else if(n.ply>=RULES.plyLimit)n.result={winner:0,reason:'limit'};
+ return n;
+}
+// 種つき乱数 (mulberry32)
+function rng(seed){let a=seed>>>0;return function(){a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
+// 棋譜コード: 先後・種・手順だけで対局全体を再現できる
+const C49='0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLM';
+function encode(s){let m='';for(const v of s.log)m+=C49[(v/NN)|0]+C49[v%NN];return 'ORIGO1.'+(s.first>0?'a':'b')+'.'+s.seed.toString(36)+'.'+m;}
+function decode(str){
+ const p=String(str).trim().split('.');if(p.length!==4||p[0]!=='ORIGO1')return null;
+ let s=newGame({seed:parseInt(p[2],36),first:p[1]==='b'?-1:1});
+ if(p[3].length%2)return null;
+ for(let i=0;i<p[3].length;i+=2){const f=C49.indexOf(p[3][i]),t=C49.indexOf(p[3][i+1]);if(f<0||t<0)return null;
+  s=apply(s,{from:f,to:t});if(!s)return null;}
+ return s;
+}
+// ---- CPU: αβ探索（「核を取れば勝ち」の疑似合法手探索。詰み・手なしと等価） ----
+const VAL=[0,0,250,300,300,330];
+const W={mob:6,kd:6};
+const bufs=[];for(let i=0;i<12;i++)bufs.push(new Int32Array(512));
+function evalB(b,side){
+ let s=0,k1=O,k2=O;
+ for(let i=0;i<NN;i++){const v=b[i];if(v>0){s+=VAL[v];if(v===K)k1=i;}else if(v<0){s-=VAL[-v];if(v===-K)k2=i;}}
+ s+=W.mob*(gen(b,1,tmpA)-gen(b,-1,tmpA));
+ s+=W.kd*((Math.abs(X[k2])+Math.abs(Y[k2]))-(Math.abs(X[k1])+Math.abs(Y[k1])));
+ return side*s;
+}
+const MATE=100000;
+function search(b,side,d,alpha,beta,ply){
+ const buf=bufs[ply],n=gen(b,side,buf);
+ for(let i=0;i<n;i++)if(b[buf[i]%NN]===-side*K)return MATE-ply;   // 核を取れる
+ if(b[O]===side*K&&!attacked(b,O,-side))return MATE-ply;         // 原点で相手の1手をしのいだ
+ if(d<=0){
+  // 王手がかかったまま読みを打ち切らない（1手詰めの見落とし防止）
+  if(ply<bufs.length-1&&attacked(b,kingPos(b,side),-side))d=1;else return evalB(b,side);
+ }
+ let j=0;for(let i=0;i<n;i++)if(b[buf[i]%NN]!==0){const t=buf[i];buf[i]=buf[j];buf[j]=t;j++;}
+ let best=-MATE-1;
+ for(let i=0;i<n;i++){const m=buf[i],f=(m/NN)|0,t=m%NN,cap=b[t];
+  b[t]=b[f];b[f]=0;
+  const v=-search(b,-side,d-1,-beta,-alpha,ply+1);
+  b[f]=b[t];b[t]=cap;
+  if(v>best){best=v;if(v>alpha){alpha=v;if(alpha>=beta)break;}}}
+ return best;
+}
+// opt:{depth, margin(最善からこの幅以内を乱択), blunder(この確率で無作為), rand(乱数関数)}
+function choose(s,opt){
+ const b=s.b.slice(),side=s.turn,ms=legal(b,side,s.rep);
+ if(!ms.length)return null;
+ const rand=opt.rand,margin=opt.margin||0;
+ if(opt.blunder&&rand()<opt.blunder){const m=ms[(rand()*ms.length)|0];return {from:(m/NN)|0,to:m%NN,score:0};}
+ const sc=[];let best=-Infinity;
+ for(const m of ms){const f=(m/NN)|0,t=m%NN,cap=b[t];b[t]=b[f];b[f]=0;
+  const v=-search(b,-side,opt.depth-1,-MATE-1,margin?MATE+1:-(best-1),1);
+  b[f]=b[t];b[t]=cap;sc.push(v);if(v>best)best=v;}
+ const cand=[];for(let i=0;i<ms.length;i++)if(sc[i]>=best-margin)cand.push(ms[i]);
+ const m=cand[(rand()*cand.length)|0];
+ return {from:(m/NN)|0,to:m%NN,score:best};
+}
+return {N,H,NN,O,K,ROT,MIR,SCA,SPI,X,Y,idx,inb,RULES,TF,SETUP,VAL,W,gen,legal,inCheck,attacked,kingPos,explain,key,newGame,apply,rng,encode,decode,choose,evalB};
+})();
+/*ENGINE-END*/
+</script>
+<script>
+(function(){
+'use strict';
+const E=Engine,NN=E.NN,X=E.X,Y=E.Y;
+const $=id=>document.getElementById(id);
+const LV=[
+ {name:'入門',note:'1手読み・時々緩手',depth:1,margin:70,blunder:.22},
+ {name:'標準',note:'2手読み',depth:2,margin:25},
+ {name:'上級',note:'3手読み',depth:3,margin:8},
+ {name:'達人',note:'4手読み',depth:4,margin:0}];
+const NAME=['','核','回転子','鏡映子','拡大子','螺旋子'];
+const GLY=['','','i','z','k','1+i'];
+const o=s=>'<span class="ov">'+s+'</span>';
+const FX={'+':'z + u','i':'c + i(z − c)','-i':'c − i(z − c)','2':'c + 2(z − c)','-2':'c − 2(z − c)','1/2':'c + ½(z − c)','-1/2':'c − ½(z − c)','-1':'c − (z − c)',
+ 'h':'c + '+o('z − c'),'v':'c − '+o('z − c'),'d':'c + i·'+o('z − c'),'a':'c − i·'+o('z − c'),
+ '1+i':'c + (1+i)(z − c)','1-i':'c + (1−i)(z − c)','(1+i)/2':'c + ½(1+i)(z − c)','(1-i)/2':'c + ½(1−i)(z − c)'};
+const TN={'+':'平行移動','i':'90° 回転','-i':'−90° 回転','2':'2 倍に拡大','-2':'−2 倍','1/2':'½ に縮小（中点）','-1/2':'−½ 倍','-1':'−1 倍（点対称）',
+ 'h':'横の直線で対称移動','v':'縦の直線で対称移動','d':'傾き 1 の直線で対称移動','a':'傾き −1 の直線で対称移動',
+ '1+i':'45° 回転・√2 倍','1-i':'−45° 回転・√2 倍','(1+i)/2':'45° 回転・1/√2 倍','(1-i)/2':'−45° 回転・1/√2 倍'};
+const LEG=[
+ [E.K,'z + u','上下左右に 1。詰められたら負け、原点を制すれば勝ち'],
+ [E.ROT,'c ± i(z − c)','中心 c のまわりに ±90° 回転'],
+ [E.SCA,'c + k(z − c)','c から見て k 倍。k = ±2, ±½, −1'],
+ [E.MIR,'c ± z̄ 型','c を通る 横・縦・斜め 45° の直線で対称移動'],
+ [E.SPI,'c + (1±i)(z − c)','±45° 回転しながら √2 倍（または 1/√2 倍）']];
+
+// ---------- 設定の保存 ----------
+const store={get(k,d){try{const v=localStorage.getItem('origo.'+k);return v===null?d:JSON.parse(v);}catch(e){return d;}},
+ set(k,v){try{localStorage.setItem('origo.'+k,JSON.stringify(v));}catch(e){}}};
+const P={music:store.get('music',true),sfx:store.get('sfx',true),threat:store.get('threat',true),level:store.get('level',1),first:store.get('first',1)};
+
+// ---------- 音（Web Audio 合成。BGM と効果音は同じ音階 D ドリアン・同じ音色） ----------
+const Snd=(function(){
+ let ctx=null,master,musicBus,sfxBus,delay,timer=null,nextT=0,step=0,rnd=E.rng(20240229);
+ const SC=[0,2,3,5,7,9,10];                       // D ドリアン
+ const fq=(deg,oct)=>{const n=((deg%7)+7)%7,o2=oct+Math.floor(deg/7);return 146.83*Math.pow(2,o2+SC[n]/12);};
+ function init(){
+  if(ctx)return;
+  const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+  ctx=new AC();
+  master=ctx.createGain();master.gain.value=.9;
+  const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2600;
+  master.connect(lp);lp.connect(ctx.destination);
+  musicBus=ctx.createGain();musicBus.gain.value=P.music?.5:0;musicBus.connect(master);
+  sfxBus=ctx.createGain();sfxBus.gain.value=P.sfx?1:0;sfxBus.connect(master);
+  delay=ctx.createDelay(1);delay.delayTime.value=.375;
+  const fb=ctx.createGain();fb.gain.value=.28;const dg=ctx.createGain();dg.gain.value=.22;
+  delay.connect(fb);fb.connect(delay);delay.connect(dg);dg.connect(master);
+  musicBus.connect(delay);sfxBus.connect(delay);
+  sync();
+ }
+ // 共通の音色: 三角波＋倍音の正弦波、速い立ち上がりと指数減衰
+ function note(f,t,dur,g,bus,soft){
+  if(!ctx)return;
+  const o1=ctx.createOscillator(),o2=ctx.createOscillator(),e=ctx.createGain(),e2=ctx.createGain();
+  o1.type='triangle';o2.type='sine';o1.frequency.value=f;o2.frequency.value=f*2.001;
+  e2.gain.value=.22;
+  e.gain.setValueAtTime(0.0001,t);
+  e.gain.exponentialRampToValueAtTime(g,t+(soft?dur*.4:.012));
+  e.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o1.connect(e);o2.connect(e2);e2.connect(e);e.connect(bus);
+  o1.start(t);o2.start(t);o1.stop(t+dur+.05);o2.stop(t+dur+.05);
+ }
+ // BGM: 4小節循環の和音上で、種つき乱数によるまばらな分散和音
+ const CH=[[0,2,4,6],[3,5,7,9],[4,6,8,10],[1,3,5,7]];
+ function sched(){
+  if(!ctx||ctx.state!=='running')return;
+  while(nextT<ctx.currentTime+.4){
+   const bar=(step>>4)%4,s=step&15,ch=CH[bar];
+   if(s===0){note(fq(ch[0],-1),nextT,6.5,.05,musicBus,true);note(fq(ch[2],0),nextT,6.5,.028,musicBus,true);}
+   if(s%2===0&&rnd()<(s%4===0?.7:.4)){const d=ch[(rnd()*4)|0];note(fq(d,1+((rnd()*2)|0)),nextT,1.6,.03+rnd()*.014,musicBus);}
+   nextT+=.42;step++;
+  }
+ }
+ function sync(){
+  if(!ctx)return;
+  const want=!document.hidden&&(P.music||P.sfx);
+  if(want&&ctx.state!=='running'){ctx.resume();}
+  if(!want&&ctx.state==='running'){ctx.suspend();}
+  if(want&&P.music&&!timer){nextT=Math.max(nextT,ctx.currentTime+.15);timer=setInterval(sched,120);}
+  if((!want||!P.music)&&timer){clearInterval(timer);timer=null;}
+  musicBus.gain.setTargetAtTime(P.music?.5:0,ctx.currentTime,.15);
+  sfxBus.gain.setTargetAtTime(P.sfx?1:0,ctx.currentTime,.02);
+ }
+ function seq(ns,gap,g,dur){if(!ctx||!P.sfx||document.hidden)return;const t=ctx.currentTime+.01;ns.forEach((n,i)=>note(fq(n[0],n[1]),t+i*gap,dur||.5,g||.11,sfxBus));}
+ const fx={
+  select(){seq([[4,1]],0,.07,.25);},
+  deselect(){seq([[2,1]],0,.05,.2);},
+  move(t,id){
+   if(t===E.K)seq([[0,1],[1,1]],.07,.09,.35);
+   else if(t===E.ROT)seq(id==='i'?[[0,1],[3,1]]:[[3,1],[0,1]],.09,.1,.45);
+   else if(t===E.SCA)seq((id==='2'||id==='-2')?[[0,1],[0,2]]:id==='-1'?[[2,1],[-2+7,0],[2,1]]:[[0,2],[0,1]],.1,.1,.5);
+   else if(t===E.MIR)seq([[4,1],[2,1],[4,1]],.08,.09,.4);
+   else seq(id.indexOf('/')<0?[[0,1],[2,1],[4,1],[6,1]]:[[6,1],[4,1],[2,1],[0,1]],.075,.085,.45);
+  },
+  capture(){seq([[0,-1],[4,-1]],.02,.16,.7);},
+  check(){seq([[5,1],[2,1]],.02,.09,.8);},
+  win(){seq([[0,1],[2,1],[4,1],[6,1],[8,1],[11,1]],.13,.11,1.4);},
+  lose(){seq([[11,0],[9,0],[7,0],[5,0],[2,0],[0,0]],.16,.1,1.4);},
+  draw(){seq([[0,1],[4,1],[0,1]],.2,.09,1);}
+ };
+ document.addEventListener('visibilitychange',sync);
+ return {init,sync,fx,state:()=>ctx?ctx.state:'none',playing:()=>!!timer};
+})();
+
+// ---------- 状態 ----------
+const G={s:null,stack:[],human:1,sel:-1,ro:false,moves:[],hot:-1,busy:false,lastEx:null,over:false};
+const svg=$('board');
+const px=x=>350+x*90, py=y=>350-y*90;
+const fmt=(x,y)=>{
+ if(!x&&!y)return '0';let s='';
+ if(x)s+=(x<0?'−':'')+Math.abs(x);
+ if(y){s+=(y<0?'−':(x?'+':''))+(Math.abs(y)===1?'':Math.abs(y))+'i';}
+ return s;};
+const zf=p=>fmt(X[p],Y[p]);
+
+// 経路上の点（盤座標）。回転・螺旋は極形式で補間 → 円弧・対数螺旋になる
+function pathPoint(from,to,ex,t){
+ const fx=X[from],fy=Y[from];
+ if(ex&&ex.c>=0&&ex.tf.w){
+  const cx=X[ex.c],cy=Y[ex.c],w=ex.tf.w,r=Math.pow(Math.hypot(w[0],w[1]),t),th=Math.atan2(w[1],w[0])*t;
+  const dx=fx-cx,dy=fy-cy;
+  return [cx+r*(dx*Math.cos(th)-dy*Math.sin(th)),cy+r*(dx*Math.sin(th)+dy*Math.cos(th))];
+ }
+ return [fx+(X[to]-fx)*t,fy+(Y[to]-fy)*t];
+}
+function pathD(from,to,ex){
+ let d='';const n=(ex&&ex.tf.w)?18:1;
+ for(let k=0;k<=n;k++){const p=pathPoint(from,to,ex,k/n);d+=(k?'L':'M')+px(p[0]).toFixed(1)+' '+py(p[1]).toFixed(1);}
+ return d;
+}
+function glyph(t,cls){
+ if(t===E.K)return '<circle class="gl ln" r="15"/><circle class="gl" r="6"/>';
+ if(t===E.MIR)return '<text class="gl" y="10" font-size="30">z</text><line class="gl ln" x1="-9" y1="-12" x2="9" y2="-12"/>';
+ if(t===E.SPI)return '<text class="gl" y="7" font-size="21">1+i</text>';
+ return '<text class="gl" y="10" font-size="31">'+GLY[t]+'</text>';
+}
+function pieceSvg(p,v,extra){
+ const t=Math.abs(v),side=v>0?'me':'op';
+ return '<g class="pc '+side+(extra||'')+'" data-p="'+p+'" transform="translate('+px(X[p])+','+py(Y[p])+')"><circle class="disc" r="'+(t===E.K?33:30)+'"/>'+glyph(t)+'</g>';
+}
+function staticGrid(){
+ let h='';
+ for(let k=-3;k<=3;k++){
+  const c=k===0?'g-axis':'g-line';
+  h+='<line class="'+c+'" x1="'+px(k)+'" y1="'+py(-3)+'" x2="'+px(k)+'" y2="'+py(3)+'"/>';
+  h+='<line class="'+c+'" x1="'+px(-3)+'" y1="'+py(k)+'" x2="'+px(3)+'" y2="'+py(k)+'"/>';
+  h+='<text class="g-lab" x="'+px(k)+'" y="'+(py(-3)+62)+'" text-anchor="middle">'+(k<0?'−'+(-k):k)+'</text>';
+  if(k)h+='<text class="g-lab" x="'+(px(-3)-48)+'" y="'+(py(k)+6)+'" text-anchor="end">'+(k<0?'−':'')+(Math.abs(k)===1?'':Math.abs(k))+'i</text>';
+ }
+ for(let i=0;i<NN;i++)h+='<circle class="g-pt" cx="'+px(X[i])+'" cy="'+py(Y[i])+'" r="3.2"/>';
+ return h;
+}
+const GRID=staticGrid();
+
+function movesOf(p){
+ const s=G.s,side=Math.sign(s.b[p]);
+ return E.legal(s.b,side,s.rep).filter(m=>((m/NN)|0)===p).map(m=>m%NN);
+}
+function originReach(side){
+ const s=G.s,k=E.kingPos(s.b,side);if(k<0)return false;
+ return E.legal(s.b,side,s.rep).indexOf(k*NN+E.O)>=0;
+}
+
+function render(skip){
+ const s=G.s,b=s.b;let h=GRID;
+ // 原点
+ const myR=!s.result&&originReach(G.human),opR=!s.result&&originReach(-G.human);
+ h+='<circle class="orig'+(myR||opR?' hot':'')+(opR?' danger':'')+'" cx="350" cy="350" r="40"/>';
+ if(!b[E.O])h+='<text class="g-lab" x="350" y="358" text-anchor="middle" style="font-size:22px;opacity:.8">O</text>';
+ // 直前の手
+ if(s.last&&G.lastEx){
+  h+='<path class="last" d="'+pathD(s.last.from,s.last.to,G.lastEx)+'"/><circle class="lastdot" cx="'+px(X[s.last.from])+'" cy="'+py(Y[s.last.from])+'" r="8"/>';
+ }
+ // 相手の利き
+ const thr=new Uint8Array(NN);
+ if(P.threat&&!s.result){const buf=new Int32Array(512),n=E.gen(b,-G.human,buf);for(let i=0;i<n;i++)thr[buf[i]%NN]=1;}
+ // 選択中の駒の作図
+ const selSide=G.sel>=0?Math.sign(b[G.sel]):0;
+ let cons='',dst='',hotEx=null;
+ if(G.sel>=0){
+  for(const to of G.moves){
+   const ex=E.explain(b,G.sel,to)[0],hot=to===G.hot;
+   if(hot)hotEx=ex;
+   cons+='<path class="cons'+(G.ro?' ro':'')+(hot?' hot':'')+'" d="'+pathD(G.sel,to,ex)+'"/>';
+   dst+='<g class="dst'+(b[to]?' cap':'')+(G.ro?' ro':'')+'" data-to="'+to+'" transform="translate('+px(X[to])+','+py(Y[to])+')"><circle class="mk" r="'+(b[to]?38:10)+'"/><circle class="hit" r="42"/></g>';
+  }
+ }
+ if(hotEx)h+=overlay(G.sel,G.hot,hotEx);
+ h+=cons;
+ // 駒
+ const chk=E.inCheck(b,s.turn)?E.kingPos(b,s.turn):-1;
+ for(let p=0;p<NN;p++){if(!b[p]||p===skip)continue;
+  let ex='';if(p===G.sel)ex+=' sel';if(p===chk)ex+=' chk';
+  h+=pieceSvg(p,b[p],ex);
+  if(thr[p]&&b[p]*G.human>0)h+='<circle class="thrR" cx="'+px(X[p])+'" cy="'+py(Y[p])+'" r="38"/>';
+ }
+ for(let p=0;p<NN;p++)if(thr[p]&&!b[p]){const x=px(X[p])+13,y=py(Y[p])-13;h+='<rect class="thr" x="'+(x-4)+'" y="'+(y-4)+'" width="8" height="8" transform="rotate(45 '+x+' '+y+')"/>';}
+ h+=dst+'<g id="anim"></g>';
+ svg.innerHTML=h;
+ renderSide();
+}
+// 変換の作図（中心・対称軸・補助線）
+function overlay(from,to,ex){
+ let h='';
+ if(ex.c<0)return h;
+ const cx=px(X[ex.c]),cy=py(Y[ex.c]),id=ex.tf.id;
+ const ax={h:[1,0],v:[0,1],d:[1,1],a:[1,-1]}[id];
+ if(ax){const L=7;h+='<line class="axisln" x1="'+px(X[ex.c]-ax[0]*L)+'" y1="'+py(Y[ex.c]-ax[1]*L)+'" x2="'+px(X[ex.c]+ax[0]*L)+'" y2="'+py(Y[ex.c]+ax[1]*L)+'" clip-path="url(#clipB)"/>';}
+ else{
+  h+='<line class="ray" x1="'+cx+'" y1="'+cy+'" x2="'+px(X[from])+'" y2="'+py(Y[from])+'"/><line class="ray" x1="'+cx+'" y1="'+cy+'" x2="'+px(X[to])+'" y2="'+py(Y[to])+'"/>';
+ }
+ h+='<circle class="pivot" cx="'+cx+'" cy="'+cy+'" r="41"/>';
+ return '<defs><clipPath id="clipB"><rect x="40" y="40" width="620" height="620"/></clipPath></defs>'+h;
+}
+function showFormula(title,from,to,ex,t){
+ const f='<span>z′ = '+FX[ex.tf.id]+'</span>';
+ let d='';
+ if(ex.c>=0)d='c = '+zf(ex.c)+'，　z = '+zf(from)+' → z′ = '+zf(to);
+ else d='z = '+zf(from)+' → z′ = '+zf(to);
+ $('fmT').textContent=title+'｜'+NAME[t]+'：'+TN[ex.tf.id];
+ $('fmF').innerHTML=f+'<small class="n">'+d+'</small>';
+}
+function renderSide(){
+ const s=G.s,st=$('status');
+ let txt='',cls='';
+ if(s.result){txt='対局終了';}
+ else if(s.turn===G.human){cls='me';txt='あなたの番です';
+  if(E.inCheck(s.b,s.turn)){txt='核が狙われています。受けてください';cls='me warn';}
+  else if(s.b[E.O]===-G.human*E.K){txt='相手の核が原点にいます。この 1 手で狙えなければ負けです';cls='me warn';}
+  else if(originReach(-G.human)){txt='相手の核が次に原点へ入れます。原点に利きを作ってください';cls='me warn';}
+  else if(originReach(G.human)){txt='核を原点 O へ進められます（相手が 1 手で狙えなければ勝ち）';}
+ }else{cls='op';txt='CPU が考えています…';}
+ st.className=cls;$('stText').textContent=txt;
+ $('plyNo').textContent=(s.ply+1)+' 手目・CPU '+LV[P.level].name;
+ // 取った駒
+ const cnt={1:[0,0,2,1,1,1],'-1':[0,0,2,1,1,1]};
+ for(let p=0;p<NN;p++)if(s.b[p])cnt[Math.sign(s.b[p])][Math.abs(s.b[p])]--;
+ const lst=side=>{let r=[];for(let t=2;t<=5;t++)for(let k=0;k<cnt[side][t];k++)r.push(t===E.MIR?'z̄':GLY[t]);return r.length?r.join('  '):'—';};
+ $('capMe').textContent=lst(-G.human);$('capOp').textContent=lst(G.human);
+ $('btUndo').disabled=G.busy||G.stack.length<2;
+ const selT=G.sel>=0?Math.abs(s.b[G.sel]):0;
+ document.querySelectorAll('.leg').forEach(el=>el.classList.toggle('on',+el.dataset.t===selT));
+}
+function buildLegend(){
+ $('legend').innerHTML=LEG.map(l=>'<div class="leg" data-t="'+l[0]+'"><svg viewBox="-36 -36 72 72"><g class="pc me"><circle class="disc" r="'+(l[0]===E.K?33:30)+'"/>'+glyph(l[0])+'</g></svg><div class="nm">'+NAME[l[0]]+'<i>z′ = '+l[1]+'</i></div><div class="ds">'+l[2]+'</div></div>').join('');
+}
+
+// ---------- 入力 ----------
+function select(p){
+ const s=G.s;G.sel=p;G.hot=-1;G.ro=Math.sign(s.b[p])!==G.human||s.turn!==G.human||!!s.result;
+ G.moves=movesOf(p);
+ const t=Math.abs(s.b[p]),mine=Math.sign(s.b[p])===G.human;
+ $('fmT').textContent=(mine?'':'相手の')+NAME[t]+'｜'+(G.moves.length?(G.ro&&mine?'（相手の番）':'')+'跳べる点 '+G.moves.length+' か所'+(G.ro?'':'。点を選ぶと動きます'):(t===E.K?'動ける点がありません':'今は動けません（盤内に移る変換がない、または核が危険）'));
+ $('fmF').innerHTML='z′ = '+LEG.find(l=>l[0]===t)[1].replace('z̄',o('z − c'));
+ Snd.fx.select();render();
+}
+function deselect(){G.sel=-1;G.moves=[];G.hot=-1;render();}
+function hit(e){
+ let el=e.target;
+ while(el&&el!==svg){if(el.dataset&&(el.dataset.to!==undefined||el.dataset.p!==undefined))return el;el=el.parentNode;}
+ return null;
+}
+svg.addEventListener('click',e=>{
+ Snd.init();
+ if(G.busy)return;
+ const el=hit(e),s=G.s;
+ if(!el){if(G.sel>=0){Snd.fx.deselect();deselect();}return;}
+ if(el.dataset.to!==undefined){
+  const to=+el.dataset.to;
+  if(G.ro){ if(s.b[to])select(to); return; }
+  play({from:G.sel,to});return;
+ }
+ const p=+el.dataset.p;
+ if(p===G.sel){Snd.fx.deselect();deselect();}else select(p);
+});
+svg.addEventListener('pointermove',e=>{
+ if(G.busy||G.sel<0||e.pointerType==='touch')return;
+ const el=hit(e);const to=el&&el.dataset.to!==undefined?+el.dataset.to:-1;
+ if(to===G.hot)return;
+ G.hot=to;
+ if(to>=0){const ex=E.explain(G.s.b,G.sel,to)[0];showFormula(G.ro?'相手の候補':'候補',G.sel,to,ex,Math.abs(G.s.b[G.sel]));}
+ render();
+});
+
+// ---------- 進行 ----------
+function play(a){
+ const s=G.s,ex=E.explain(s.b,a.from,a.to)[0],t=Math.abs(s.b[a.from]),cap=s.b[a.to]!==0,mover=s.turn;
+ const n=E.apply(s,a);if(!n)return;
+ G.busy=true;G.sel=-1;G.moves=[];G.hot=-1;
+ showFormula(mover===G.human?'あなた':'CPU',a.from,a.to,ex,t);
+ render(a.from);
+ // 作図を見せながら、変換の軌跡どおりに駒を動かす
+ const an=$('anim');
+ an.innerHTML=overlay(a.from,a.to,ex)+'<path class="cons hot'+(mover===G.human?'':' ro')+'" d="'+pathD(a.from,a.to,ex)+'" style="opacity:.55"/>'+pieceSvg(a.from,s.b[a.from],' mv');
+ const g=an.querySelector('.mv');g.style.pointerEvents='none';
+ Snd.fx.move(t,ex.tf.id);
+ const dur=mover===G.human?(t===E.K?220:430):(t===E.K?420:760),t0=performance.now();
+ const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;
+ function fin(){
+  G.s=n;G.stack.push(n);G.lastEx=ex;G.busy=false;
+  if(cap)Snd.fx.capture();
+  render();
+  if(n.result){finish();return;}
+  if(E.inCheck(n.b,n.turn))Snd.fx.check();
+  if(n.turn!==G.human)cpu();
+ }
+ function frame(now){
+  let u=Math.min(1,(now-t0)/dur);const e2=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
+  const p=pathPoint(a.from,a.to,ex,e2);
+  g.setAttribute('transform','translate('+px(p[0])+','+py(p[1])+')');
+  if(u<1)requestAnimationFrame(frame);else fin();
+ }
+ if(reduce||document.hidden)fin();else requestAnimationFrame(frame);
+}
+function cpu(){
+ G.busy=true;renderSide();
+ const s=G.s;
+ setTimeout(()=>{
+  if(G.s!==s)return;
+  // CPU の乱数も「種＋手数」から決まる（同じ棋譜なら同じ手を選ぶ）
+  const rand=E.rng((s.seed^Math.imul(s.ply+1,0x9E3779B1))>>>0);
+  const lv=LV[P.level];
+  const a=E.choose(s,{depth:lv.depth,margin:lv.margin,blunder:lv.blunder,rand});
+  G.busy=false;
+  if(a)play(a);
+ },380);
+}
+function finish(){
+ const r=G.s.result,st=store.get('stat',{});
+ const k='L'+P.level;st[k]=st[k]||[0,0,0];
+ let title,sub;
+ const why={mate:'詰み — 核の逃げ場がありません',origin:'原点制圧 — 核が原点 O で 1 手をしのぎました',stale:'手なし — 指せる手がありません',limit:'120 手で決着がつきませんでした'}[r.reason];
+ if(r.winner===G.human){title='勝ち';st[k][0]++;Snd.fx.win();}
+ else if(r.winner===0){title='引き分け';st[k][2]++;Snd.fx.draw();}
+ else{title='負け';st[k][1]++;Snd.fx.lose();}
+ store.set('stat',st);
+ $('resTitle').textContent=title;$('resSub').textContent=why+'（'+G.s.ply+' 手）';
+ $('resStat').textContent='CPU '+LV[P.level].name+' との通算　'+st[k][0]+' 勝 '+st[k][1]+' 敗'+(st[k][2]?' '+st[k][2]+' 分':'');
+ setTimeout(()=>show('mdRes'),700);
+}
+function newGame(){
+ const seed=(Date.now()^(performance.now()*1000))>>>0||1;      // 種は対局ごとに 1 つ。以後の乱数はすべてここから
+ let first=P.first;if(first===0)first=(E.rng(seed)()<.5)?1:-1;
+ start(E.newGame({seed,first}));
+}
+function start(s){
+ G.s=s;G.stack=[s];G.sel=-1;G.moves=[];G.hot=-1;G.busy=false;G.lastEx=null;
+ $('fmT').textContent='駒に触れると、跳べる点と変換が表示されます';$('fmF').innerHTML='z′ = c + w(z − c)';
+ render();
+ if(!s.result&&s.turn!==G.human)cpu();
+}
+function undo(){
+ if(G.busy||G.stack.length<2)return;
+ G.stack.pop();
+ while(G.stack.length>1&&G.stack[G.stack.length-1].turn!==G.human)G.stack.pop();
+ G.s=G.stack[G.stack.length-1];G.sel=-1;G.moves=[];G.lastEx=null;
+ if(G.s.last){ // 直前の手の表示を復元
+  const prev=G.stack[G.stack.length-2];if(prev)G.lastEx=E.explain(prev.b,G.s.last.from,G.s.last.to)[0];}
+ render();
+ if(G.s.turn!==G.human)cpu();
+}
+
+// ---------- 画面部品 ----------
+function show(id){$(id).classList.add('show');}
+function hide(id){$(id).classList.remove('show');}
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target.hasAttribute('data-close')||(e.target===m&&m.id!=='mdStart'))hide(m.id);}));
+function bindTog(id,key,after){
+ const el=$(id);el.setAttribute('aria-pressed',P[key]);
+ el.addEventListener('click',()=>{Snd.init();P[key]=!P[key];store.set(key,P[key]);el.setAttribute('aria-pressed',P[key]);after();});
+}
+bindTog('tgMusic','music',()=>Snd.sync());
+bindTog('tgSfx','sfx',()=>Snd.sync());
+bindTog('tgThreat','threat',()=>render());
+$('optLv').innerHTML=LV.map((l,i)=>'<button data-v="'+i+'">'+l.name+'<small>'+l.note+'</small></button>').join('');
+function bindOpt(id,key){
+ const box=$(id),upd=()=>box.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.v===P[key]));
+ box.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;P[key]=+b.dataset.v;store.set(key,P[key]);upd();});upd();
+}
+bindOpt('optLv','level');bindOpt('optFirst','first');
+$('stGo').onclick=()=>{Snd.init();hide('mdStart');newGame();};
+$('stRules').onclick=()=>show('mdRules');
+$('btRules').onclick=()=>show('mdRules');
+$('btNew').onclick=()=>{Snd.init();show('mdStart');};
+$('btUndo').onclick=()=>{Snd.init();undo();};
+$('resNew').onclick=()=>{hide('mdRes');show('mdStart');};
+$('resView').onclick=()=>hide('mdRes');
+$('btRec').onclick=()=>{$('recOut').value=E.encode(G.s);$('recMsg').textContent='';show('mdRec');};
+$('recCopy').onclick=()=>{const t=$('recOut');t.select();try{navigator.clipboard?navigator.clipboard.writeText(t.value):document.execCommand('copy');$('recMsg').textContent='コピーしました';}catch(e){}};
+$('recLoad').onclick=()=>{
+ if(G.busy)return;
+ // 手順を最初から適用し直して局面を復元する（決定的に再現できることの確認にもなる）
+ let s=E.decode($('recIn').value);
+ if(!s){$('recMsg').textContent='コードを読み取れませんでした';return;}
+ const acts=s.log.slice();let r=E.newGame({seed:s.seed,first:s.first});const stack=[r];
+ for(const m of acts){r=E.apply(r,{from:(m/NN)|0,to:m%NN});stack.push(r);}
+ hide('mdRec');start(r);G.stack=stack;
+ if(r.last)G.lastEx=E.explain(stack[stack.length-2].b,r.last.from,r.last.to)[0];
+ render();
+};
+buildLegend();
+start(E.newGame({seed:1,first:1}));
+G.busy=true;        // 開始画面を閉じるまで盤は触れない
+show('mdStart');
+window.__origo={G,E,P,play,Snd};
+})();
+</script>
+</body>
+</html>
