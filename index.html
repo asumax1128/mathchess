@@ -152,7 +152,7 @@ textarea{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(-
       <h2>勝利条件</h2>
       <ol class="goal">
         <li>相手の<b>核</b>を詰める（逃げ場をなくす）</li>
-        <li>自分の<b>核</b>を<b>原点 O</b> に置き、相手の 1 手をしのぐ</li>
+        <li>自分の<b>核</b>を<b>原点 O</b> に置き、相手の 2 手をしのぐ<br><span style="color:var(--mute);font-size:12px">60 手を過ぎたら 1 手でよい</span></li>
       </ol>
     </div>
     <div class="card">
@@ -180,7 +180,7 @@ textarea{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(-
   <ul>
     <li>核以外の駒は、<b>味方の駒 c を中心</b>にした変換（回転・拡大縮小・対称移動・複素数倍）で跳びます。途中の駒は関係ありません。</li>
     <li>跳んだ先に相手の駒があれば取ります。味方が減ると中心も減り、動きが痩せます。</li>
-    <li>相手の核を<b>詰める</b>か、自分の核を<b>原点 O</b> に置いて相手の 1 手をしのげば勝ち。</li>
+    <li>相手の核を<b>詰める</b>か、自分の核を<b>原点 O</b> に置いたまま相手の 2 手をしのげば勝ち。</li>
   </ul>
   <h3>CPU の強さ</h3>
   <div class="opt" id="optLv"></div>
@@ -203,7 +203,8 @@ textarea{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(-
   <h3>勝敗</h3>
   <ul>
     <li><b>詰み</b>：相手に指せる手がなくなれば勝ち。</li>
-    <li><b>原点制圧</b>：自分の核を原点 O に置き、相手が次の 1 手でその核を狙えなければ勝ち。狙われたら通常どおり受けます（相手の利きがある間は原点に入れません）。</li>
+    <li><b>原点制圧</b>：自分の核を原点 O に置き、そのまま相手の 2 手をしのげば勝ち。つまり、相手が 2 手続けて原点の核を狙えなければ成立します。狙われたら通常どおり受け、数え直しです（相手の利きがある間は原点に入れません）。</li>
+    <li>長期戦の決着用に、両者合計 60 手を指し終えた後は、しのぐのは 1 手で足ります。</li>
     <li>120 手で決着しなければ引き分け。</li>
   </ul>
   <h3>駒の動き</h3>
@@ -230,7 +231,7 @@ textarea{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(-
   <textarea id="recOut" readonly></textarea>
   <div class="row" style="margin-top:8px"><button class="btn" id="recCopy">コピー</button></div>
   <h3>読み込み</h3>
-  <textarea id="recIn" placeholder="ORIGO1. で始まるコードを貼り付け"></textarea>
+  <textarea id="recIn" placeholder="ORIGO2. で始まるコードを貼り付け"></textarea>
   <p class="lead" id="recMsg"></p>
   <div class="row"><button class="btn" data-close>閉じる</button><button class="btn pri" id="recLoad">この局面から再開</button></div>
 </div></div>
@@ -258,7 +259,13 @@ const X=new Int8Array(NN),Y=new Int8Array(NN);
 for(let i=0;i<NN;i++){X[i]=i%N-H;Y[i]=Math.floor(i/N)-H;}
 const idx=(x,y)=>(y+H)*N+(x+H);
 const inb=(x,y)=>x>=-H&&x<=H&&y>=-H&&y<=H;
-const RULES={plyLimit:120,repeatMax:2};
+// 原点制圧（ルール v2）: 核を原点に置いたまま相手の hold 手をしのげば勝ち。
+//   両者合計 easeAt 手を指し終えた後は 1 手でよい（長期戦の決着用）
+// 以下は自己対戦での比較測定用の切り替えで、出荷版では使わない:
+//   zone='x'(原点と上下左右に相手の利きがあれば不成立) / support(原点に味方の利きが要る)
+//   firstKing(先手の初手は核に限る) / easeAt2(後手だけ緩和を早める)
+const RULES={plyLimit:120,repeatMax:2,hold:2,easeAt:60,easeAt2:0,zone:'o',support:false,firstKing:false};
+const need=(ply,second)=>{const e=(second&&RULES.easeAt2)||RULES.easeAt;return (e&&ply>=e)?1:RULES.hold;};
 // 変換表: (a,b)=z−c に対する作用。f は [a',b'] か null（格子点に乗らない）
 // w は極形式で補間できる乗数（アニメーション用）
 const TF={};
@@ -309,12 +316,30 @@ function kingPos(b,side){for(let i=0;i<NN;i++)if(b[i]===side*K)return i;return -
 const tmpA=new Int32Array(512);
 function attacked(b,sq,by){const n=gen(b,by,tmpA);for(let i=0;i<n;i++)if(tmpA[i]%NN===sq)return true;return false;}
 function inCheck(b,side){const k=kingPos(b,side);return k<0||attacked(b,k,-side);}
-function key(b,turn){let s=turn>0?'+':'-';for(let i=0;i<NN;i++)s+=String.fromCharCode(70+b[i]);return s;}
+const ZX=[O,O+1,O-1,O+N,O-N];
+// sq に side の駒が「跳べる」か（sq に味方がいても数える＝守りの利き）
+function covers(b,sq,side){
+ const ps=[];for(let i=0;i<NN;i++)if(b[i]*side>0&&i!==sq)ps.push(i);
+ for(const p of ps){const t=b[p]*side;if(t===K)continue;
+  for(const c of ps){if(c===p)continue;const dx=X[p]-X[c],dy=Y[p]-Y[c];
+   for(const tf of TF[t]){const r=tf.f(dx,dy);if(r&&X[c]+r[0]===X[sq]&&Y[c]+r[1]===Y[sq])return true;}}}
+ return false;
+}
+// side の核が原点にあり、制圧の条件（相手の利きなし等）を満たしているか
+function holding(b,side){
+ if(b[O]!==side*K)return false;
+ if(RULES.zone==='x'){const n=gen(b,-side,tmpA);for(let i=0;i<n;i++){const t=tmpA[i]%NN;if(t===O||t===O+1||t===O-1||t===O+N||t===O-N)return false;}}
+ else if(attacked(b,O,-side))return false;
+ if(RULES.support&&!covers(b,O,side))return false;
+ return true;
+}
+function key(b,turn,hold){let s=turn>0?'+':'-';for(let i=0;i<NN;i++)s+=String.fromCharCode(70+b[i]);if(hold&&(hold[1]||hold[-1]))s+=hold[1]+''+hold[-1];return s;}
 // 合法手: 核を取られる手、同一局面を3回目にする手は指せない
-function legal(b,side,rep){
+function legal(b,side,rep,ply){
  b=b.slice();
  const buf=new Int32Array(512),n=gen(b,side,buf),res=[];
  for(let i=0;i<n;i++){const m=buf[i],f=(m/NN)|0,t=m%NN,cap=b[t];
+  if(RULES.firstKing&&ply===0&&b[f]!==side*K)continue;
   b[t]=b[f];b[f]=0;
   if(!inCheck(b,side)&&!(rep&&(rep[key(b,-side)]||0)>=RULES.repeatMax))res.push(m);
   b[f]=b[t];b[t]=cap;}
@@ -334,21 +359,22 @@ function newGame(opt){
  opt=opt||{};const b=new Array(NN).fill(0);
  for(const [t,x,y] of SETUP){b[idx(x,y)]=t;b[idx(-x,-y)]=-t;}
  const first=opt.first<0?-1:1;
- const s={b,turn:first,first,ply:0,seed:(opt.seed>>>0)||1,rep:{},result:null,last:null,log:[]};
+ const s={b,turn:first,first,ply:0,seed:(opt.seed>>>0)||1,rep:{},result:null,last:null,log:[],hold:{1:0,'-1':0}};
  s.rep[key(b,first)]=1;return s;
 }
 // 1手 = {from,to}。不正な手なら null
 function apply(s,a){
  if(s.result)return null;
  const m=a.from*NN+a.to;
- if(legal(s.b,s.turn,s.rep).indexOf(m)<0)return null;
+ if(legal(s.b,s.turn,s.rep,s.ply).indexOf(m)<0)return null;
  const b=s.b.slice(),cap=b[a.to];b[a.to]=b[a.from];b[a.from]=0;
  const n={b,turn:-s.turn,first:s.first,ply:s.ply+1,seed:s.seed,rep:Object.assign({},s.rep),result:null,
-  last:{from:a.from,to:a.to,cap},log:s.log.concat([m])};
+  last:{from:a.from,to:a.to,cap},log:s.log.concat([m]),hold:{1:s.hold[1],'-1':s.hold[-1]}};
+ n.hold[n.turn]=holding(b,n.turn)?s.hold[n.turn]+1:0;
  const k=key(b,n.turn);n.rep[k]=(n.rep[k]||0)+1;
  // 原点制圧: 核が原点にあり、相手がいま指した手でも狙えていなければ、核の持ち主の勝ち
- if(b[O]===n.turn*K&&!attacked(b,O,s.turn))n.result={winner:n.turn,reason:'origin'};
- else if(legal(b,n.turn,n.rep).length===0)n.result={winner:s.turn,reason:inCheck(b,n.turn)?'mate':'stale'};
+ if(n.hold[n.turn]>=need(n.ply,n.turn!==n.first))n.result={winner:n.turn,reason:'origin'};
+ else if(legal(b,n.turn,n.rep,n.ply).length===0)n.result={winner:s.turn,reason:inCheck(b,n.turn)?'mate':'stale'};
  else if(n.ply>=RULES.plyLimit)n.result={winner:0,reason:'limit'};
  return n;
 }
@@ -356,9 +382,9 @@ function apply(s,a){
 function rng(seed){let a=seed>>>0;return function(){a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
 // 棋譜コード: 先後・種・手順だけで対局全体を再現できる
 const C49='0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLM';
-function encode(s){let m='';for(const v of s.log)m+=C49[(v/NN)|0]+C49[v%NN];return 'ORIGO1.'+(s.first>0?'a':'b')+'.'+s.seed.toString(36)+'.'+m;}
+function encode(s){let m='';for(const v of s.log)m+=C49[(v/NN)|0]+C49[v%NN];return 'ORIGO2.'+(s.first>0?'a':'b')+'.'+s.seed.toString(36)+'.'+m;}
 function decode(str){
- const p=String(str).trim().split('.');if(p.length!==4||p[0]!=='ORIGO1')return null;
+ const p=String(str).trim().split('.');if(p.length!==4||(p[0]!=='ORIGO2'&&p[0]!=='ORIGO1'))return null;   // ORIGO1 = ルール v1 時代の棋譜（手順は同じ形式）
  let s=newGame({seed:parseInt(p[2],36),first:p[1]==='b'?-1:1});
  if(p[3].length%2)return null;
  for(let i=0;i<p[3].length;i+=2){const f=C49.indexOf(p[3][i]),t=C49.indexOf(p[3][i+1]);if(f<0||t<0)return null;
@@ -376,11 +402,11 @@ function evalB(b,side){
  s+=W.kd*((Math.abs(X[k2])+Math.abs(Y[k2]))-(Math.abs(X[k1])+Math.abs(Y[k1])));
  return side*s;
 }
-const MATE=100000;
-function search(b,side,d,alpha,beta,ply){
+const MATE=100000;let rootPly=0,rootFirst=1;
+function search(b,side,d,alpha,beta,ply,hs,ho){
  const buf=bufs[ply],n=gen(b,side,buf);
  for(let i=0;i<n;i++)if(b[buf[i]%NN]===-side*K)return MATE-ply;   // 核を取れる
- if(b[O]===side*K&&!attacked(b,O,-side))return MATE-ply;         // 原点で相手の1手をしのいだ
+ if(holding(b,side)){if(++hs>=need(rootPly+ply,side!==rootFirst))return MATE-ply;}else hs=0;   // 原点制圧
  if(d<=0){
   // 王手がかかったまま読みを打ち切らない（1手詰めの見落とし防止）
   if(ply<bufs.length-1&&attacked(b,kingPos(b,side),-side))d=1;else return evalB(b,side);
@@ -389,26 +415,26 @@ function search(b,side,d,alpha,beta,ply){
  let best=-MATE-1;
  for(let i=0;i<n;i++){const m=buf[i],f=(m/NN)|0,t=m%NN,cap=b[t];
   b[t]=b[f];b[f]=0;
-  const v=-search(b,-side,d-1,-beta,-alpha,ply+1);
+  const v=-search(b,-side,d-1,-beta,-alpha,ply+1,ho,hs);
   b[f]=b[t];b[t]=cap;
   if(v>best){best=v;if(v>alpha){alpha=v;if(alpha>=beta)break;}}}
  return best;
 }
 // opt:{depth, margin(最善からこの幅以内を乱択), blunder(この確率で無作為), rand(乱数関数)}
 function choose(s,opt){
- const b=s.b.slice(),side=s.turn,ms=legal(b,side,s.rep);
+ const b=s.b.slice(),side=s.turn,ms=legal(b,side,s.rep,s.ply);rootPly=s.ply;rootFirst=s.first;
  if(!ms.length)return null;
  const rand=opt.rand,margin=opt.margin||0;
  if(opt.blunder&&rand()<opt.blunder){const m=ms[(rand()*ms.length)|0];return {from:(m/NN)|0,to:m%NN,score:0};}
  const sc=[];let best=-Infinity;
  for(const m of ms){const f=(m/NN)|0,t=m%NN,cap=b[t];b[t]=b[f];b[f]=0;
-  const v=-search(b,-side,opt.depth-1,-MATE-1,margin?MATE+1:-(best-1),1);
+  const v=-search(b,-side,opt.depth-1,-MATE-1,margin?MATE+1:-(best-1),1,s.hold[-side],s.hold[side]);
   b[f]=b[t];b[t]=cap;sc.push(v);if(v>best)best=v;}
  const cand=[];for(let i=0;i<ms.length;i++)if(sc[i]>=best-margin)cand.push(ms[i]);
  const m=cand[(rand()*cand.length)|0];
  return {from:(m/NN)|0,to:m%NN,score:best};
 }
-return {N,H,NN,O,K,ROT,MIR,SCA,SPI,X,Y,idx,inb,RULES,TF,SETUP,VAL,W,gen,legal,inCheck,attacked,kingPos,explain,key,newGame,apply,rng,encode,decode,choose,evalB};
+return {N,H,NN,O,K,ROT,MIR,SCA,SPI,X,Y,idx,inb,RULES,TF,SETUP,VAL,W,gen,legal,inCheck,attacked,covers,holding,need,kingPos,explain,key,newGame,apply,rng,encode,decode,choose,evalB};
 })();
 /*ENGINE-END*/
 </script>
@@ -582,6 +608,8 @@ function render(skip){
  const myR=!s.result&&originReach(G.human),opR=!s.result&&originReach(-G.human);
  h+='<circle class="orig'+(myR||opR?' hot':'')+(opR?' danger':'')+'" cx="350" cy="350" r="40"/>';
  if(!b[E.O])h+='<text class="g-lab" x="350" y="358" text-anchor="middle" style="font-size:22px;opacity:.8">O</text>';
+ {const hk=Math.abs(b[E.O])===E.K?Math.sign(b[E.O]):0;   // 原点を 1 手しのいだ核には二重の輪
+  if(hk&&s.hold[hk]>0&&!s.result)h+='<circle class="orig hot'+(hk===G.human?'':' danger')+'" cx="350" cy="350" r="47"/>';}
  // 直前の手
  if(s.last&&G.lastEx){
   h+='<path class="last" d="'+pathD(s.last.from,s.last.to,G.lastEx)+'"/><circle class="lastdot" cx="'+px(X[s.last.from])+'" cy="'+py(Y[s.last.from])+'" r="8"/>';
@@ -641,12 +669,15 @@ function renderSide(){
  if(s.result){txt='対局終了';}
  else if(s.turn===G.human){cls='me';txt='あなたの番です';
   if(E.inCheck(s.b,s.turn)){txt='核が狙われています。受けてください';cls='me warn';}
-  else if(s.b[E.O]===-G.human*E.K){txt='相手の核が原点にいます。この 1 手で狙えなければ負けです';cls='me warn';}
-  else if(originReach(-G.human)){txt='相手の核が次に原点へ入れます。原点に利きを作ってください';cls='me warn';}
-  else if(originReach(G.human)){txt='核を原点 O へ進められます（相手が 1 手で狙えなければ勝ち）';}
+  else if(s.b[E.O]===-G.human*E.K){
+   const rem=E.need(s.ply+1,-G.human!==s.first)-s.hold[-G.human];
+   txt=rem<=1?'相手の核が原点にいます。この 1 手で狙えなければ負けです':'相手の核が原点に入りました。2 手以内に狙えなければ負けです';cls='me warn';}
+  else if(s.b[E.O]===G.human*E.K&&s.hold[G.human]>0){txt='原点を保持中。核を動かさず、相手の次の 1 手もしのげば勝ちです';}
+  else if(originReach(-G.human)){txt='相手の核が次に原点へ入れます。原点に利きを用意してください';cls='me warn';}
+  else if(originReach(G.human)){txt='核を原点 O へ進められます（そのまま相手の '+E.need(s.ply+2,G.human!==s.first)+' 手をしのげば勝ち）';}
  }else{cls='op';txt='CPU が考えています…';}
  st.className=cls;$('stText').textContent=txt;
- $('plyNo').textContent=(s.ply+1)+' 手目・CPU '+LV[P.level].name;
+ $('plyNo').textContent=(s.ply+1)+' 手目'+(s.ply>=E.RULES.easeAt&&!s.result?'（原点は 1 手で制圧）':'')+'・CPU '+LV[P.level].name;
  // 取った駒
  const cnt={1:[0,0,2,1,1,1],'-1':[0,0,2,1,1,1]};
  for(let p=0;p<NN;p++)if(s.b[p])cnt[Math.sign(s.b[p])][Math.abs(s.b[p])]--;
@@ -744,7 +775,7 @@ function finish(){
  const r=G.s.result,st=store.get('stat',{});
  const k='L'+P.level;st[k]=st[k]||[0,0,0];
  let title,sub;
- const why={mate:'詰み — 核の逃げ場がありません',origin:'原点制圧 — 核が原点 O で 1 手をしのぎました',stale:'手なし — 指せる手がありません',limit:'120 手で決着がつきませんでした'}[r.reason];
+ const why={mate:'詰み — 核の逃げ場がありません',origin:'原点制圧 — 核が原点 O を守り切りました',stale:'手なし — 指せる手がありません',limit:'120 手で決着がつきませんでした'}[r.reason];
  if(r.winner===G.human){title='勝ち';st[k][0]++;Snd.fx.win();}
  else if(r.winner===0){title='引き分け';st[k][2]++;Snd.fx.draw();}
  else{title='負け';st[k][1]++;Snd.fx.lose();}
@@ -806,9 +837,11 @@ $('recLoad').onclick=()=>{
  // 手順を最初から適用し直して局面を復元する（決定的に再現できることの確認にもなる）
  let s=E.decode($('recIn').value);
  if(!s){$('recMsg').textContent='コードを読み取れませんでした';return;}
+ const legacy=$('recIn').value.trim().indexOf('ORIGO1.')===0;
  const acts=s.log.slice();let r=E.newGame({seed:s.seed,first:s.first});const stack=[r];
  for(const m of acts){r=E.apply(r,{from:(m/NN)|0,to:m%NN});stack.push(r);}
  hide('mdRec');start(r);G.stack=stack;
+ if(legacy)setTimeout(()=>{$('fmT').textContent='旧ルール（v1）の棋譜を読み込みました。手順はそのまま再現し、原点制圧の判定だけ現行ルールで行っています';},0);
  if(r.last)G.lastEx=E.explain(stack[stack.length-2].b,r.last.from,r.last.to)[0];
  render();
 };
