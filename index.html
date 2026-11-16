@@ -6,132 +6,226 @@
 <title>ORIGO — 複素数平面の変換対局</title>
 <meta name="description" content="格子点の上で、回転・対称移動・拡大縮小・複素数倍という変換そのものを駒の動きにした対戦ボードゲーム。">
 <style>
+/* 配色は 藍(地)・真鍮(器械)・金/銀(駒)・光(軌跡と原点) の4系統のみ。光源は左上に1つ。 */
 :root{
-  --bg:#0d111b;--panel:#151b29;--panel2:#1b2233;--line:#2a3348;--grid:#27304a;--axis:#55618a;
-  --ink:#e6e9f2;--mute:#8d96ad;--me:#e8b866;--me-ink:#1c1405;--op:#5cb6cc;--op-ink:#04181e;
-  --warn:#e2685f;--ok:#8fd0a0;
-  --serif:"Times New Roman",Times,"Noto Serif JP","Hiragino Mincho ProN",serif;
+  --ink0:#03040b;--ink1:#070a1d;--ink2:#0c1233;--ink3:#141d4a;
+  --brass:#c9a45a;--brass-hi:#ecd595;--brass-lo:#7b5c26;--brass-dk:#3d2c0e;
+  --gold:#e9c66a;--silver:#cfd6e4;
+  --lux:#ffe9b0;
+  --text:#e9e2cf;--mute:#9a927c;
+  --hair:rgba(201,164,90,.26);--hair2:rgba(201,164,90,.5);
+  --serif:"Cormorant Garamond","EB Garamond","Times New Roman",Times,Georgia,"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
   --sans:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI","Yu Gothic",Meiryo,system-ui,sans-serif;
 }
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-text-size-adjust:100%}
-body{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center}
-button{font:inherit;color:inherit;cursor:pointer}
-header{width:100%;max-width:1060px;display:flex;align-items:baseline;gap:14px;padding:14px 16px 6px}
-h1{font-family:var(--serif);font-weight:400;font-size:26px;letter-spacing:.22em;margin:0}
-h1 b{font-weight:400;color:var(--me)}
-header .sub{color:var(--mute);font-size:12px;letter-spacing:.08em;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html,body{margin:0;color:var(--text);font-family:var(--sans);-webkit-text-size-adjust:100%}
+html{background:var(--ink0)}
+body{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;
+  background:radial-gradient(120% 90% at 28% 12%,#111a44 0%,#0a0f2b 34%,#060818 66%,#03040b 100%) fixed}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#sky{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+header,main{position:relative;z-index:1}
+body.title-on header,body.title-on main{display:none}
+
+header{width:100%;max-width:1080px;display:flex;align-items:baseline;gap:14px;padding:16px 18px 4px}
+h1{font-family:var(--serif);font-weight:700;font-size:25px;letter-spacing:.34em;margin:0;
+  background:linear-gradient(160deg,#fff3c4 0%,#e9c66a 38%,#b98a2e 72%,#8a6420 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+header .sub{color:var(--mute);font-size:11.5px;letter-spacing:.3em;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tog{display:flex;gap:6px}
-.chip{background:transparent;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12px;color:var(--mute);white-space:nowrap}
-.chip[aria-pressed="true"]{color:var(--ink);border-color:var(--axis);background:var(--panel2)}
-.chip:hover{border-color:var(--axis)}
-main{width:100%;max-width:1060px;display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;padding:6px 16px 20px;align-items:start}
-#boardWrap{position:relative;width:100%;max-width:min(680px,calc(100dvh - 215px));margin:0 auto}
-#board{display:block;width:100%;height:auto;touch-action:manipulation;user-select:none;-webkit-user-select:none;overflow:visible}
-#status{display:flex;align-items:center;gap:10px;min-height:40px;padding:6px 4px;font-size:14px}
-#status .dot{width:10px;height:10px;border-radius:50%;background:var(--mute);flex:none}
-#status.me .dot{background:var(--me)}#status.op .dot{background:var(--op)}
-#status.warn #stText{color:var(--warn)}
+.chip{background:transparent;border:1px solid var(--hair);border-radius:999px;padding:5px 12px 5px 10px;font-size:11.5px;letter-spacing:.06em;color:var(--mute);white-space:nowrap;display:flex;align-items:center;gap:6px}
+.chip::before{content:"";width:5px;height:5px;border-radius:50%;background:#3a3f55}
+.chip[aria-pressed="true"]{color:var(--text);border-color:var(--hair2)}
+.chip[aria-pressed="true"]::before{background:var(--lux);box-shadow:0 0 6px 1px rgba(255,233,176,.7)}
+
+main{width:100%;max-width:1080px;display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:20px;padding:4px 18px 24px;align-items:start}
+#status{display:flex;align-items:center;gap:10px;min-height:38px;padding:4px 4px;font-size:13.5px;letter-spacing:.04em}
+#status .dot{width:13px;height:13px;border-radius:50%;flex:none;background:#333;box-shadow:1px 2px 3px rgba(0,0,0,.6)}
+#status.au .dot{background:radial-gradient(circle at 34% 30%,#fff3c4,#e2bb58 45%,#8d651d)}
+#status.ag .dot{background:radial-gradient(circle at 34% 30%,#fff,#c3cad6 45%,#6a7384)}
+#status.warn #stText{color:var(--lux);text-shadow:0 0 12px rgba(255,233,176,.45)}
 #stText{flex:1}
-#plyNo{color:var(--mute);font-size:12px;font-variant-numeric:tabular-nums}
-#formula{min-height:64px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 13px;margin-top:8px}
-#formula .t{font-size:12px;color:var(--mute);letter-spacing:.05em}
-#formula .f{font-family:var(--serif);font-size:19px;font-style:italic;margin-top:2px;white-space:nowrap;overflow-x:auto}
-#formula .f .n{font-style:normal}
-#formula .f small{font-size:14px;color:var(--mute);font-style:normal;margin-left:10px}
+#plyNo{color:var(--mute);font-size:11.5px;font-variant-numeric:tabular-nums;letter-spacing:.06em}
+
+#boardWrap{position:relative;width:100%;max-width:min(690px,calc(100dvh - 205px));margin:0 auto;filter:drop-shadow(7px 12px 20px rgba(0,0,0,.62))}
+#boardBg{display:block;width:100%;height:auto}
+#board{position:absolute;inset:0;width:100%;height:100%;touch-action:manipulation;user-select:none;-webkit-user-select:none;overflow:visible}
+
+.plate{background:linear-gradient(160deg,rgba(22,31,74,.82),rgba(9,13,36,.86));border:1px solid var(--hair);border-radius:10px;
+  box-shadow:inset 1px 1px 0 rgba(236,213,149,.07),3px 5px 14px rgba(0,0,0,.35)}
+#formula{min-height:66px;padding:10px 14px;margin-top:14px}
+#formula .t{font-size:11.5px;color:var(--brass);letter-spacing:.1em}
+#formula .f{font-family:var(--serif);font-size:20px;font-style:italic;margin-top:3px;white-space:nowrap;overflow-x:auto;color:#f3ecd8}
+#formula .f small{font-size:14px;color:var(--mute);font-style:normal;margin-left:12px}
 .ov{text-decoration:overline}
 aside{display:flex;flex-direction:column;gap:12px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 13px}
-.card h2{margin:0 0 8px;font-size:12px;font-weight:600;color:var(--mute);letter-spacing:.12em}
-.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.btn{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 8px;font-size:13px}
-.btn:hover{border-color:var(--axis)}
-.btn:disabled{opacity:.4;cursor:default}
-.btn.pri{background:var(--me);color:var(--me-ink);border-color:var(--me);font-weight:600}
-.goal{font-size:13px;line-height:1.75;margin:0;padding-left:1.2em}
-.goal b{color:var(--me);font-weight:600}
-.leg{display:grid;grid-template-columns:40px 1fr;gap:4px 10px;align-items:center;padding:6px 4px;border-radius:8px;border:1px solid transparent}
-.leg+.leg{margin-top:2px}
-.leg.on{border-color:var(--axis);background:var(--panel2)}
-.leg svg{width:38px;height:38px;grid-row:span 2}
-.leg .nm{font-size:13px}
-.leg .nm i{font-family:var(--serif);font-size:15px;color:var(--me);margin-left:6px}
+.card{padding:13px 14px}
+.card h2{margin:0 0 9px;font-family:var(--serif);font-size:12.5px;font-weight:400;color:var(--brass);letter-spacing:.3em}
+.card h2 span{letter-spacing:.04em;color:var(--mute);font-family:var(--sans);font-size:11px;margin-left:6px}
+.goal{font-size:13px;line-height:1.8;margin:0;padding-left:1.25em}
+.goal b{color:var(--gold);font-weight:600;letter-spacing:.06em}
+.leg{display:grid;grid-template-columns:42px 1fr;gap:1px 10px;align-items:center;padding:5px 5px;border-radius:8px;border:1px solid transparent}
+.leg.on{border-color:var(--hair2);background:rgba(255,233,176,.045)}
+.leg svg{width:42px;height:42px;grid-row:span 2}
+.leg .nm{font-family:var(--serif);font-size:13.5px;letter-spacing:.2em;color:var(--brass-hi)}
+.leg .nm em{font-style:normal;font-family:var(--sans);font-size:10.5px;letter-spacing:.05em;color:var(--mute);margin-left:5px}
+.leg .nm i{font-size:15px;letter-spacing:0;color:#f3ecd8;margin-left:8px}
 .leg .ds{font-size:11.5px;color:var(--mute);line-height:1.45}
-.cap{display:flex;justify-content:space-between;font-size:12px;color:var(--mute);gap:8px}
-.cap span b{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink);margin-left:3px}
-/* 盤 */
-.g-line{stroke:var(--grid);stroke-width:1.2}
-.g-axis{stroke:var(--axis);stroke-width:1.6}
-.g-lab{fill:var(--mute);font-family:var(--serif);font-size:17px;font-style:italic}
-.g-pt{fill:#3a4566}
+.cap{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:11px;color:var(--mute);letter-spacing:.08em}
+.cap .row{display:flex;gap:1px;min-height:32px;align-items:center;margin-top:4px}
+.cap svg{width:31px;height:31px;margin-left:-4px}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{background:rgba(255,233,176,.03);border:1px solid var(--hair2);border-radius:8px;padding:9px 8px;font-size:12.5px;letter-spacing:.08em;color:var(--text)}
+.btn:hover{background:rgba(255,233,176,.08)}
+.btn:disabled{opacity:.35;cursor:default}
+.btn.pri{background:linear-gradient(150deg,#f0d896 0%,#c9a45a 34%,#a07c38 70%,#7b5c26 100%);color:#2a1c05;border-color:#5b4217;font-weight:600;
+  text-shadow:.6px .8px 0 rgba(255,244,205,.55);box-shadow:inset 1px 1px 0 rgba(255,246,214,.7),inset -1px -1px 0 rgba(50,33,5,.55),3px 4px 9px rgba(0,0,0,.5)}
+.btn.pri:hover{filter:brightness(1.07)}
+
+/* 盤の動的レイヤ（光と駒） */
 .pc{cursor:pointer}
-.pc .disc{stroke-width:2.5}
-.pc.me .disc{fill:var(--me);stroke:#f6dba6}.pc.op .disc{fill:var(--op);stroke:#a9e0ee}
-.pc.me .gl{fill:var(--me-ink);stroke:var(--me-ink)}.pc.op .gl{fill:var(--op-ink);stroke:var(--op-ink)}
-.pc .gl{font-family:var(--serif);font-style:italic;font-weight:700;text-anchor:middle;stroke-width:0}
-.pc .gl.ln{stroke-width:2.6;fill:none}
-.pc.sel .disc{stroke:#fff;stroke-width:4}
-.pc.chk .disc{stroke:var(--warn);stroke-width:5}
-.pc.dim{opacity:.55}
-.dst{cursor:pointer}
-.dst .hit{fill:transparent}
-.dst .mk{fill:var(--me);opacity:.9}
-.dst.cap .mk{fill:none;stroke:var(--warn);stroke-width:4;opacity:1}
-.dst.ro .mk{fill:var(--op)}.dst.ro.cap .mk{fill:none;stroke:var(--op)}
-.dst.ro{cursor:default}
-.cons{fill:none;stroke:var(--me);stroke-width:2;stroke-dasharray:5 6;opacity:.3;pointer-events:none}
-.cons.ro{stroke:var(--op)}
-.cons.hot{opacity:1;stroke-width:3;stroke-dasharray:none}
-.axisln{stroke:#fff;stroke-width:1.6;stroke-dasharray:10 6;opacity:.75;pointer-events:none}
-.pivot{fill:none;stroke:#fff;stroke-width:2.5;stroke-dasharray:4 5;pointer-events:none}
-.ray{stroke:#fff;stroke-width:1.2;opacity:.5;pointer-events:none}
-.last{fill:none;stroke:#fff;stroke-width:2.2;opacity:.34;pointer-events:none}
-.lastdot{fill:#fff;opacity:.3}
-.thr{fill:var(--warn);opacity:.8;pointer-events:none}
-.thrR{fill:none;stroke:var(--warn);stroke-width:2;stroke-dasharray:3 5;opacity:.9;pointer-events:none}
-.orig{fill:none;stroke:var(--me);stroke-width:1.6;opacity:.75}
-.orig.hot{stroke-width:3;animation:pulse 1.1s ease-in-out infinite}
-.orig.danger{stroke:var(--warn)}
-@keyframes pulse{50%{opacity:.25}}
-/* モーダル */
-.modal{position:fixed;inset:0;background:rgba(5,8,14,.72);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+.hi-au{color:#fff6d2;opacity:.85}.ink-au{color:#3f2a05}
+.hi-ag{color:#ffffff;opacity:.95}.ink-ag{color:#232a38}
+.selring{fill:none;stroke:var(--lux);stroke-width:2.2}
+.chkring{fill:none;stroke:#fff8e0;stroke-width:3;animation:pulse 1s ease-in-out infinite}
+.dst{cursor:pointer}.dst .hit{fill:transparent}
+.dst .core{fill:#fff6da}
+.dst .ringG{fill:none;stroke:var(--lux);stroke-width:9;opacity:.2}
+.dst .ring{fill:none;stroke:#fff3cf;stroke-width:2.2}
+.dst.ro{cursor:default;opacity:.62}
+.consG{fill:none;stroke:var(--lux);stroke-width:9;opacity:.2;stroke-linecap:round;pointer-events:none}
+.cons{fill:none;stroke:var(--lux);stroke-width:1.5;stroke-dasharray:3 7;opacity:.42;stroke-linecap:round;pointer-events:none}
+.cons.ro{opacity:.3}
+.cons.hot{opacity:1;stroke-width:2.4;stroke-dasharray:none;stroke:#fff3cf}
+.axisln{stroke:#fff3cf;stroke-width:1.3;stroke-dasharray:9 7;opacity:.7;pointer-events:none}
+.pivot{fill:none;stroke:#fff3cf;stroke-width:1.8;stroke-dasharray:3 6;pointer-events:none}
+.ray{stroke:var(--lux);stroke-width:1;opacity:.4;pointer-events:none}
+.last{fill:none;stroke:var(--lux);stroke-width:1.6;opacity:.3;pointer-events:none;stroke-linecap:round}
+.lastdot{fill:var(--lux);opacity:.32}
+.thr{opacity:.48;pointer-events:none}.thrR{fill:none;stroke-width:1.2;stroke-dasharray:2 6;opacity:.7;pointer-events:none}
+.m-au{fill:var(--gold);stroke:var(--gold)}.m-ag{fill:var(--silver);stroke:var(--silver)}
+.thrR.m-au,.thrR.m-ag{fill:none}
+.orighot{fill:none;stroke-width:2.4;animation:pulse 1.15s ease-in-out infinite;pointer-events:none}
+@keyframes pulse{50%{opacity:.22}}
+
+/* タイトル・モーダル */
+.modal{position:fixed;inset:0;background:rgba(3,4,11,.74);display:none;align-items:center;justify-content:center;padding:16px;z-index:10;overflow:auto}
 .modal.show{display:flex}
-.sheet{background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:560px;width:100%;max-height:92dvh;overflow:auto;padding:22px 22px 18px}
-.sheet h2{font-family:var(--serif);font-weight:400;letter-spacing:.14em;font-size:22px;margin:0 0 4px}
-.sheet h3{font-size:13px;color:var(--me);letter-spacing:.1em;margin:18px 0 6px;font-weight:600}
-.sheet p,.sheet li{font-size:13.5px;line-height:1.8;color:#cfd4e2}
-.sheet p{margin:6px 0}
-.sheet ul,.sheet ol{margin:4px 0;padding-left:1.3em}
+.sheet{background:linear-gradient(160deg,#172050 0%,#0d1335 45%,#080b22 100%);border:1px solid var(--hair2);border-radius:14px;max-width:580px;width:100%;max-height:92dvh;overflow:auto;padding:24px 24px 20px;
+  box-shadow:inset 1px 1px 0 rgba(236,213,149,.12),10px 16px 40px rgba(0,0,0,.6)}
+.sheet h2{font-family:var(--serif);font-weight:400;letter-spacing:.3em;font-size:21px;margin:0 0 6px;color:var(--brass-hi)}
+.sheet h3{font-family:var(--serif);font-size:12.5px;color:var(--brass);letter-spacing:.3em;margin:20px 0 6px;font-weight:400;border-bottom:1px solid var(--hair);padding-bottom:5px}
+.sheet p,.sheet li{font-size:13.5px;line-height:1.85;color:#d6cfbc}
+.sheet p{margin:6px 0}.sheet ul{margin:4px 0;padding-left:1.3em}
+.sheet b{color:var(--gold);font-weight:600}
 .sheet .lead{color:var(--mute);font-size:12.5px}
-.sheet .mf{font-family:var(--serif);font-style:italic;font-size:19px;text-align:center;padding:10px;margin:10px 0;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
-.opt{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
-.opt button{flex:1;min-width:84px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 6px;font-size:13px}
-.opt button small{display:block;color:var(--mute);font-size:11px;margin-top:2px}
-.opt button[aria-pressed="true"]{border-color:var(--me);color:var(--me)}
-.sheet .row{display:flex;gap:8px;margin-top:18px}
+.sheet .row{display:flex;gap:10px;margin-top:20px}
 .sheet .row .btn{flex:1;padding:11px}
 table.pt{width:100%;border-collapse:collapse;font-size:13px}
-table.pt td{padding:7px 6px;border-top:1px solid var(--line);vertical-align:top;line-height:1.6}
-table.pt td:first-child{white-space:nowrap}
-table.pt i{font-family:var(--serif);font-size:15px;color:var(--me)}
-textarea{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;resize:vertical;min-height:64px;word-break:break-all}
-#resTitle{font-size:26px}
-#resSub{font-size:14px;color:var(--mute)}
-@media (max-width:860px){
-  main{grid-template-columns:1fr;padding:4px 10px 20px}
-  header{padding:10px 12px 4px;gap:8px}
-  h1{font-size:21px}
+table.pt td{padding:8px 6px;border-top:1px solid var(--hair);vertical-align:middle;line-height:1.6;color:#d6cfbc}
+table.pt td:first-child{width:46px;padding-right:2px}
+table.pt td:nth-child(2){white-space:nowrap;font-family:var(--serif);letter-spacing:.18em;color:var(--brass-hi)}
+table.pt td:nth-child(2) em{display:block;font-style:normal;font-family:var(--sans);font-size:10.5px;letter-spacing:.05em;color:var(--mute)}
+table.pt svg{width:42px;height:42px;display:block}
+table.pt i{font-family:var(--serif);font-size:15.5px;color:#f3ecd8}
+textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px solid var(--hair);border-radius:8px;padding:8px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;resize:vertical;min-height:64px;word-break:break-all}
+
+#mdStart{background:transparent;align-items:flex-start}
+.tscreen{margin:auto;width:100%;max-width:520px;display:flex;flex-direction:column;align-items:center;padding:6px 0 18px}
+#tRing{width:min(100%,58dvh,470px);height:auto;display:block;overflow:visible}
+.tcoins{display:flex;justify-content:center;gap:clamp(6px,3.2vw,22px);margin-top:-6px}
+.tcoins figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:3px}
+.tcoins svg{width:clamp(50px,15vw,68px);height:auto}
+.tcoins figcaption{font-family:var(--serif);font-size:10.5px;letter-spacing:.26em;color:var(--brass);padding-left:.26em}
+.plaque{position:relative;margin-top:20px;width:min(100%,380px);padding:13px 20px 12px;border-radius:5px;text-align:center;
+  background:linear-gradient(152deg,#efd898 0%,#cfab60 22%,#a8843f 55%,#86662b 82%,#6e5220 100%);
+  box-shadow:inset 1.2px 1.2px 0 rgba(255,247,216,.75),inset -1.2px -1.2px 0 rgba(48,32,5,.6),inset 0 0 0 5px rgba(0,0,0,0),6px 9px 18px rgba(0,0,0,.55)}
+.plaque::before{content:"";position:absolute;inset:5px;border-radius:2px;border:1px solid rgba(58,40,8,.45);box-shadow:.8px .8px 0 rgba(255,244,205,.4)}
+.plaque b{display:block;font-family:var(--serif);font-weight:400;font-size:21px;letter-spacing:.5em;padding-left:.5em;color:#3a2707;text-shadow:.8px .9px 0 rgba(255,244,205,.6)}
+.plaque span{display:block;font-family:var(--serif);font-size:9.5px;letter-spacing:.24em;color:#4a340c;margin-top:3px;text-shadow:.6px .7px 0 rgba(255,244,205,.5)}
+.plaque i{position:absolute;width:6px;height:6px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f6e3aa,#8a6a2c 55%,#3d2c0e);box-shadow:.8px 1px 1px rgba(40,26,4,.7)}
+.plaque i:nth-of-type(1){left:10px;top:10px}.plaque i:nth-of-type(2){right:10px;top:10px}.plaque i:nth-of-type(3){left:10px;bottom:10px}.plaque i:nth-of-type(4){right:10px;bottom:10px}
+.tsetup{width:min(100%,380px);margin-top:20px}
+.tsetup .lab{font-family:var(--serif);font-size:11px;letter-spacing:.3em;color:var(--brass);margin:12px 0 6px;display:flex;align-items:center;gap:10px}
+.tsetup .lab::after{content:"";flex:1;height:1px;background:var(--hair)}
+.opt{display:flex;gap:6px}
+.opt button{flex:1;min-width:0;background:rgba(255,233,176,.02);border:1px solid var(--hair);border-radius:7px;padding:8px 2px;font-size:12.5px;letter-spacing:.08em;color:var(--mute)}
+.opt button small{display:block;font-size:9.5px;letter-spacing:0;margin-top:1px;opacity:.75}
+.opt button[aria-pressed="true"]{border-color:var(--brass);color:var(--brass-hi);background:rgba(255,233,176,.07);box-shadow:inset 0 0 14px rgba(255,233,176,.06)}
+.tsetup .row{display:flex;gap:10px;margin-top:18px}
+.tsetup .row .btn{padding:12px}
+.tsetup .row .btn.pri{flex:2;font-size:14px;letter-spacing:.3em;padding-left:.3em}
+.tsetup .row .btn:first-child{flex:1}
+
+#mdRes .sheet{max-width:400px;text-align:center;padding-top:26px}
+#resCoin svg{width:84px;height:84px}
+#resTitle{font-size:30px;letter-spacing:.4em;padding-left:.4em;margin-top:2px;font-weight:700;
+  background:linear-gradient(160deg,#fff3c4 0%,#e9c66a 40%,#b98a2e 80%);-webkit-background-clip:text;background-clip:text;color:transparent}
+#resTitle.ag{background-image:linear-gradient(160deg,#fff 0%,#cfd6e4 45%,#8a93a4 85%)}
+#resSub{font-size:13.5px;color:var(--text)}
+
+@media (max-width:880px){
+  main{grid-template-columns:1fr;padding:2px 10px 22px;gap:14px}
+  header{padding:10px 12px 2px;gap:8px}
+  h1{font-size:19px;letter-spacing:.28em}
   header .sub{display:none}
-  .tog{margin-left:auto}
-  #boardWrap{max-width:min(100%,calc(100dvh - 210px));min-width:min(100%,300px)}
-  #formula .f{font-size:16px}
+  .tog{margin-left:auto;gap:4px}
+  .chip{padding:5px 9px 5px 8px;font-size:11px}
+  #boardWrap{max-width:min(100%,calc(100dvh - 190px));min-width:min(100%,300px)}
+  #formula .f{font-size:16.5px}#formula .f small{font-size:12.5px;margin-left:8px}
+  #status{font-size:12.5px;min-height:34px}
 }
-@media (prefers-reduced-motion:reduce){.orig.hot{animation:none}}
+@media (prefers-reduced-motion:reduce){.orighot,.chkring{animation:none}}
 </style>
 </head>
-<body>
+<body class="title-on">
+<svg id="sky" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+
+<!-- 共有の素材定義。光源は左上。金属は硬い光沢、影は右下へ落ちる -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gAuRim" x1=".1" y1=".05" x2=".9" y2=".95"><stop offset="0" stop-color="#fff6cf"/><stop offset=".22" stop-color="#eccb72"/><stop offset=".52" stop-color="#bd8d31"/><stop offset=".8" stop-color="#8a6119"/><stop offset="1" stop-color="#5e400d"/></linearGradient>
+  <linearGradient id="gAuGroove" x1=".1" y1=".05" x2=".9" y2=".95"><stop offset="0" stop-color="#6a4a10"/><stop offset=".5" stop-color="#a97c28"/><stop offset="1" stop-color="#f4dc97"/></linearGradient>
+  <radialGradient id="gAuFace" cx=".34" cy=".28" r=".86"><stop offset="0" stop-color="#fdefb6"/><stop offset=".3" stop-color="#eccb74"/><stop offset=".68" stop-color="#c79a3c"/><stop offset="1" stop-color="#946b1f"/></radialGradient>
+  <linearGradient id="gAgRim" x1=".1" y1=".05" x2=".9" y2=".95"><stop offset="0" stop-color="#ffffff"/><stop offset=".22" stop-color="#d7dde7"/><stop offset=".52" stop-color="#939dad"/><stop offset=".8" stop-color="#5d6677"/><stop offset="1" stop-color="#394150"/></linearGradient>
+  <linearGradient id="gAgGroove" x1=".1" y1=".05" x2=".9" y2=".95"><stop offset="0" stop-color="#525a69"/><stop offset=".5" stop-color="#939cab"/><stop offset="1" stop-color="#f4f6fa"/></linearGradient>
+  <radialGradient id="gAgFace" cx=".34" cy=".28" r=".86"><stop offset="0" stop-color="#fbfcfe"/><stop offset=".3" stop-color="#d6dbe5"/><stop offset=".68" stop-color="#9da6b6"/><stop offset="1" stop-color="#687184"/></radialGradient>
+  <radialGradient id="gSh"><stop offset="0" stop-color="#000" stop-opacity=".62"/><stop offset=".72" stop-color="#000" stop-opacity=".42"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+  <linearGradient id="gEdge" x1=".12" y1=".08" x2=".75" y2=".8"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".42" stop-color="#fff" stop-opacity=".12"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></linearGradient>
+  <linearGradient id="gGloss" x1=".2" y1="0" x2=".7" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset=".7" stop-color="#fff" stop-opacity=".1"/><stop offset="1" stop-color="#fff" stop-opacity=".03"/></linearGradient>
+  <radialGradient id="gLux"><stop offset="0" stop-color="#ffe9b0" stop-opacity=".62"/><stop offset=".4" stop-color="#ffe9b0" stop-opacity=".2"/><stop offset="1" stop-color="#ffe9b0" stop-opacity="0"/></radialGradient>
+  <radialGradient id="gLuxSoft"><stop offset="0" stop-color="#ffe9b0" stop-opacity=".34"/><stop offset=".45" stop-color="#ffe2a0" stop-opacity=".1"/><stop offset="1" stop-color="#ffe2a0" stop-opacity="0"/></radialGradient>
+  <linearGradient id="gBrass" x1=".05" y1="0" x2=".95" y2="1"><stop offset="0" stop-color="#f1dc9f"/><stop offset=".16" stop-color="#cfad63"/><stop offset=".5" stop-color="#a07c38"/><stop offset=".82" stop-color="#735521"/><stop offset="1" stop-color="#4a3510"/></linearGradient>
+  <linearGradient id="gBrassLine" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e6b4"/><stop offset=".5" stop-color="#c9a45a"/><stop offset="1" stop-color="#6e5220"/></linearGradient>
+  <radialGradient id="gScrew" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#f8e8b4"/><stop offset=".5" stop-color="#a8843f"/><stop offset="1" stop-color="#3d2c0e"/></radialGradient>
+  <clipPath id="clipFace"><circle r="30.2"/></clipPath>
+  <g id="coin-au">
+    <circle cx="3.6" cy="5.4" r="39.5" fill="url(#gSh)"/>
+    <circle r="36" fill="url(#gAuRim)"/>
+    <circle r="34" fill="none" stroke="#3a2604" stroke-opacity=".5" stroke-width="2.6" stroke-dasharray="1 2.05"/>
+    <circle r="34" fill="none" stroke="#fff7d6" stroke-opacity=".42" stroke-width="2.6" stroke-dasharray=".55 2.5" stroke-dashoffset="-1.05"/>
+    <circle r="31.7" fill="url(#gAuGroove)"/>
+    <circle r="30.2" fill="url(#gAuFace)"/>
+    <ellipse cx="-9" cy="-14" rx="27" ry="16.5" transform="rotate(-36)" fill="url(#gGloss)" clip-path="url(#clipFace)"/>
+    <circle r="27.4" fill="none" stroke="#fff6cf" stroke-opacity=".5" stroke-width=".7" transform="translate(.6 .6)"/>
+    <circle r="27.4" fill="none" stroke="#4d3407" stroke-opacity=".5" stroke-width=".7"/>
+    <circle r="35.4" fill="none" stroke="url(#gEdge)" stroke-width="1.2"/>
+  </g>
+  <g id="coin-ag">
+    <circle cx="3.6" cy="5.4" r="39.5" fill="url(#gSh)"/>
+    <circle r="36" fill="url(#gAgRim)"/>
+    <circle r="34" fill="none" stroke="#1d222d" stroke-opacity=".5" stroke-width="2.6" stroke-dasharray="1 2.05"/>
+    <circle r="34" fill="none" stroke="#ffffff" stroke-opacity=".5" stroke-width="2.6" stroke-dasharray=".55 2.5" stroke-dashoffset="-1.05"/>
+    <circle r="31.7" fill="url(#gAgGroove)"/>
+    <circle r="30.2" fill="url(#gAgFace)"/>
+    <ellipse cx="-9" cy="-14" rx="27" ry="16.5" transform="rotate(-36)" fill="url(#gGloss)" clip-path="url(#clipFace)"/>
+    <circle r="27.4" fill="none" stroke="#ffffff" stroke-opacity=".6" stroke-width=".7" transform="translate(.6 .6)"/>
+    <circle r="27.4" fill="none" stroke="#2b3240" stroke-opacity=".5" stroke-width=".7"/>
+    <circle r="35.4" fill="none" stroke="url(#gEdge)" stroke-width="1.2"/>
+  </g>
+  <g id="faces"></g>
+</defs></svg>
+
 <header>
-  <h1>ORIG<b>O</b></h1>
+  <h1>ORIGO</h1>
   <div class="sub">複素数平面の変換対局</div>
   <div class="tog">
     <button class="chip" id="tgMusic" aria-pressed="true">音楽</button>
@@ -143,26 +237,27 @@ textarea{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(-
   <section>
     <div id="status"><span class="dot"></span><span id="stText"></span><span id="plyNo"></span></div>
     <div id="boardWrap">
-      <svg id="board" viewBox="0 0 700 700" role="img" aria-label="盤面（複素数平面の格子点）"></svg>
+      <svg id="boardBg" viewBox="0 0 760 760" aria-hidden="true"></svg>
+      <svg id="board" viewBox="0 0 760 760" role="img" aria-label="盤面（複素数平面の格子点）"></svg>
     </div>
-    <div id="formula"><div class="t" id="fmT">駒に触れると、跳べる点と変換が表示されます</div><div class="f" id="fmF">z′ = c + w(z − c)</div></div>
+    <div id="formula" class="plate"><div class="t" id="fmT">駒に触れると、跳べる点と変換が表示されます</div><div class="f" id="fmF">z′ = c + w(z − c)</div></div>
   </section>
   <aside>
-    <div class="card">
+    <div class="card plate">
       <h2>勝利条件</h2>
       <ol class="goal">
-        <li>相手の<b>核</b>を詰める（逃げ場をなくす）</li>
-        <li>自分の<b>核</b>を<b>原点 O</b> に置き、相手の 1 手をしのぐ</li>
+        <li>相手の <b>POLUS</b> を詰める（逃げ場をなくす）</li>
+        <li>自分の <b>POLUS</b> を<b>原点 O</b> に置き、相手の 1 手をしのぐ</li>
       </ol>
     </div>
-    <div class="card">
-      <h2>駒と変換　<span style="font-weight:400;letter-spacing:0">c は味方の駒（中心）</span></h2>
+    <div class="card plate">
+      <h2>PRISM<span>五駒と変換。c は味方の駒（中心）</span></h2>
       <div id="legend"></div>
     </div>
-    <div class="card">
-      <div class="cap"><span>取った駒<b id="capMe">—</b></span><span>取られた駒<b id="capOp">—</b></span></div>
+    <div class="card plate">
+      <div class="cap"><div>取った駒<div class="row" id="capMe"></div></div><div>取られた駒<div class="row" id="capOp"></div></div></div>
     </div>
-    <div class="card">
+    <div class="card plate">
       <div class="btns">
         <button class="btn" id="btNew">新しい対局</button>
         <button class="btn" id="btUndo">一手戻す</button>
@@ -173,48 +268,39 @@ textarea{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(-
   </aside>
 </main>
 
-<div class="modal" id="mdStart"><div class="sheet">
-  <h2>ORIGO</h2>
-  <p class="lead">複素数平面の格子点で戦う、変換の対局。1局 5〜10 分。</p>
-  <div class="mf">z′ = c + w(z − c)</div>
-  <ul>
-    <li>核以外の駒は、<b>味方の駒 c を中心</b>にした変換（回転・拡大縮小・対称移動・複素数倍）で跳びます。途中の駒は関係ありません。</li>
-    <li>跳んだ先に相手の駒があれば取ります。味方が減ると中心も減り、動きが痩せます。</li>
-    <li>相手の核を<b>詰める</b>か、自分の核を<b>原点 O</b> に置いて相手の 1 手をしのげば勝ち。</li>
-  </ul>
-  <h3>CPU の強さ</h3>
-  <div class="opt" id="optLv"></div>
-  <h3>手番</h3>
-  <div class="opt" id="optFirst">
-    <button data-v="1">先手</button><button data-v="-1">後手</button><button data-v="0">おまかせ</button>
+<div class="modal show" id="mdStart"><div class="tscreen">
+  <svg id="tRing" viewBox="0 0 560 560" role="img" aria-label="ORIGO 複素数平面の変換対局"></svg>
+  <div class="tcoins" id="tCoins"></div>
+  <div class="plaque"><i></i><i></i><i></i><i></i><b>PRISM</b><span>POLUS · ROTA · IMAGO · SPIRA · MAGNA</span></div>
+  <div class="tsetup">
+    <div class="lab">CPU</div>
+    <div class="opt" id="optLv"></div>
+    <div class="lab">手番</div>
+    <div class="opt" id="optFirst">
+      <button data-v="1">先手<small>金</small></button><button data-v="-1">後手<small>銀</small></button><button data-v="0">おまかせ</button>
+    </div>
+    <div class="row"><button class="btn" id="stRules">ルール</button><button class="btn pri" id="stGo">対局開始</button></div>
   </div>
-  <div class="row"><button class="btn" id="stRules">ルール詳細</button><button class="btn pri" id="stGo">対局開始</button></div>
 </div></div>
 
 <div class="modal" id="mdRules"><div class="sheet">
   <h2>ルール</h2>
-  <p class="lead">盤は複素数平面の格子点 x + yi（x, y は −3〜3 の整数）、全 49 点。</p>
+  <p class="lead">盤は複素数平面の格子点 x + yi（x, y は −3〜3 の整数）、全 49 点。駒は五種 PRISM、先手が金、後手が銀。</p>
   <h3>進め方</h3>
   <ul>
     <li>交互に、自分の駒を 1 つ動かします。パスはできません。</li>
     <li>移動先に相手の駒があれば取ります。味方の駒がある点には動けません。</li>
-    <li>自分の核が取られる状態になる手、同じ局面を 3 回目にする手は指せません。</li>
+    <li>自分の POLUS が取られる状態になる手、同じ局面を 3 回目にする手は指せません。</li>
   </ul>
   <h3>勝敗</h3>
   <ul>
     <li><b>詰み</b>：相手に指せる手がなくなれば勝ち。</li>
-    <li><b>原点制圧</b>：自分の核を原点 O に置き、相手が次の 1 手でその核を狙えなければ勝ち。狙われたら通常どおり受けます（相手の利きがある間は原点に入れません）。</li>
+    <li><b>原点制圧</b>：自分の POLUS を原点 O に置き、相手が次の 1 手でその POLUS を狙えなければ勝ち。狙われたら通常どおり受けます（相手の利きがある間は原点に入れません）。</li>
     <li>120 手で決着しなければ引き分け。</li>
   </ul>
-  <h3>駒の動き</h3>
-  <p>核以外の駒は、味方の駒のどれか 1 つを中心 c に選び、自分の位置 z を次の式で移します。行き先が格子点で盤内なら跳べます（途中に駒があってもよい）。</p>
-  <table class="pt">
-    <tr><td>核</td><td><i>z′ = z + u</i>　u = 1, i, −1, −i（上下左右に 1）</td></tr>
-    <tr><td>回転子 <i>i</i></td><td><i>z′ = c ± i(z − c)</i>　c を中心に ±90° 回転</td></tr>
-    <tr><td>拡大子 <i>k</i></td><td><i>z′ = c + k(z − c)</i>　k = 2, −2, ½, −½, −1。c から見て同じ直線上を伸縮。k = −1 は点対称、½ は中点</td></tr>
-    <tr><td>鏡映子 <i>z̄</i></td><td>c を通る 横・縦・傾き ±1 の直線に関して対称移動。式では <i>c ± <span class="ov">z − c</span></i>、<i>c ± i·<span class="ov">z − c</span></i></td></tr>
-    <tr><td>螺旋子 <i>1+i</i></td><td><i>z′ = c + (1 ± i)(z − c)</i>：±45° 回転して √2 倍。逆向きの <i>½(1 ± i)</i> 倍（±45° 回転して 1/√2 倍）も可</td></tr>
-  </table>
+  <h3>PRISM の動き</h3>
+  <p>POLUS 以外の駒は、味方の駒のどれか 1 つを中心 c に選び、自分の位置 z を次の式で移します。行き先が格子点で盤内なら跳べます（途中に駒があってもよい）。</p>
+  <table class="pt" id="ruleTable"></table>
   <h3>読みのコツ</h3>
   <ul>
     <li>駒を 1 つ動かすと、それを中心にしていた味方すべての行き先が変わります。</li>
@@ -235,7 +321,8 @@ textarea{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(-
   <div class="row"><button class="btn" data-close>閉じる</button><button class="btn pri" id="recLoad">この局面から再開</button></div>
 </div></div>
 
-<div class="modal" id="mdRes"><div class="sheet" style="max-width:420px;text-align:center">
+<div class="modal" id="mdRes"><div class="sheet">
+  <div id="resCoin"></div>
   <h2 id="resTitle"></h2>
   <p id="resSub"></p>
   <p class="lead" id="resStat"></p>
@@ -418,12 +505,14 @@ return {N,H,NN,O,K,ROT,MIR,SCA,SPI,X,Y,idx,inb,RULES,TF,SETUP,VAL,W,gen,legal,in
 const E=Engine,NN=E.NN,X=E.X,Y=E.Y;
 const $=id=>document.getElementById(id);
 const LV=[
- {name:'入門',note:'1手読み・時々緩手',depth:1,margin:70,blunder:.22},
+ {name:'入門',note:'1手読み',depth:1,margin:70,blunder:.22},
  {name:'標準',note:'2手読み',depth:2,margin:25},
  {name:'上級',note:'3手読み',depth:3,margin:8},
  {name:'達人',note:'4手読み',depth:4,margin:0}];
-const NAME=['','核','回転子','鏡映子','拡大子','螺旋子'];
-const GLY=['','','i','z','k','1+i'];
+// 五駒 PRISM。添字はエンジンの駒種（1 核,2 回転,3 鏡映,4 拡大,5 螺旋）
+const NAME=['','POLUS','ROTA','IMAGO','MAGNA','SPIRA'];
+const JP=['','核','回転','鏡映','拡大','螺旋'];
+const PRISM=[E.K,E.ROT,E.MIR,E.SPI,E.SCA];
 const o=s=>'<span class="ov">'+s+'</span>';
 const FX={'+':'z + u','i':'c + i(z − c)','-i':'c − i(z − c)','2':'c + 2(z − c)','-2':'c − 2(z − c)','1/2':'c + ½(z − c)','-1/2':'c − ½(z − c)','-1':'c − (z − c)',
  'h':'c + '+o('z − c'),'v':'c − '+o('z − c'),'d':'c + i·'+o('z − c'),'a':'c − i·'+o('z − c'),
@@ -431,12 +520,12 @@ const FX={'+':'z + u','i':'c + i(z − c)','-i':'c − i(z − c)','2':'c + 2(z 
 const TN={'+':'平行移動','i':'90° 回転','-i':'−90° 回転','2':'2 倍に拡大','-2':'−2 倍','1/2':'½ に縮小（中点）','-1/2':'−½ 倍','-1':'−1 倍（点対称）',
  'h':'横の直線で対称移動','v':'縦の直線で対称移動','d':'傾き 1 の直線で対称移動','a':'傾き −1 の直線で対称移動',
  '1+i':'45° 回転・√2 倍','1-i':'−45° 回転・√2 倍','(1+i)/2':'45° 回転・1/√2 倍','(1-i)/2':'−45° 回転・1/√2 倍'};
-const LEG=[
- [E.K,'z + u','上下左右に 1。詰められたら負け、原点を制すれば勝ち'],
- [E.ROT,'c ± i(z − c)','中心 c のまわりに ±90° 回転'],
- [E.SCA,'c + k(z − c)','c から見て k 倍。k = ±2, ±½, −1'],
- [E.MIR,'c ± z̄ 型','c を通る 横・縦・斜め 45° の直線で対称移動'],
- [E.SPI,'c + (1±i)(z − c)','±45° 回転しながら √2 倍（または 1/√2 倍）']];
+const LEG={};
+LEG[E.K]=['z + u','上下左右に 1。詰められたら負け、原点を制すれば勝ち','<i>z′ = z + u</i>　u = 1, i, −1, −i（上下左右に 1）'];
+LEG[E.ROT]=['c ± i(z − c)','中心 c のまわりに ±90° 回転','<i>z′ = c ± i(z − c)</i>　c を中心に ±90° 回転'];
+LEG[E.MIR]=['c ± '+o('z − c'),'c を通る 横・縦・斜め 45° の直線で対称移動','c を通る 横・縦・傾き ±1 の直線に関して対称移動。式では <i>c ± '+o('z − c')+'</i>、<i>c ± i·'+o('z − c')+'</i>'];
+LEG[E.SPI]=['c + (1±i)(z − c)','±45° 回転しながら √2 倍（または 1/√2 倍）','<i>z′ = c + (1 ± i)(z − c)</i>：±45° 回転して √2 倍。逆向きの <i>½(1 ± i)</i> 倍（±45° 回転して 1/√2 倍）も可'];
+LEG[E.SCA]=['c + k(z − c)','c から見て k 倍。k = ±2, ±½, −1','<i>z′ = c + k(z − c)</i>　k = 2, −2, ½, −½, −1。c から見て同じ直線上を伸縮。k = −1 は点対称、½ は中点'];
 
 // ---------- 設定の保存 ----------
 const store={get(k,d){try{const v=localStorage.getItem('origo.'+k);return v===null?d:JSON.parse(v);}catch(e){return d;}},
@@ -516,11 +605,118 @@ const Snd=(function(){
  document.addEventListener('visibilitychange',sync);
  return {init,sync,fx,state:()=>ctx?ctx.state:'none',playing:()=>!!timer};
 })();
+// ---------- 素材の生成（駒の顔・星空・器械の目盛り） ----------
+const f1=n=>n.toFixed(1);
+// 駒の顔: 記号が主役、紋章は記号を囲む細い線。色は currentColor（暗＋光の二重描きで彫刻に見せる）
+function buildFaces(){
+ const T='font-family="Times New Roman,Times,Georgia,serif" font-style="italic" font-weight="700" text-anchor="middle" fill="currentColor"';
+ const L=w=>'fill="none" stroke="currentColor" stroke-width="'+w+'" stroke-linecap="round" stroke-linejoin="round"';
+ let h='';
+ // POLUS: P を芯の輪と四方の目盛りで囲む
+ h+='<g id="face1"><g opacity=".78"><circle r="18.6" '+L(1.25)+'/><path d="M0-20.8V-25.2M0 20.8V25.2M-20.8 0H-25.2M20.8 0H25.2" '+L(1.5)+'/></g><text x=".6" y="10.4" font-size="31" '+T+'>P</text></g>';
+ // ROTA: i を、反時計回り（正の向き）の円弧矢印で囲む
+ {const r=19.2,a0=-52,a1=228,pt=a=>[r*Math.cos(a*Math.PI/180),-r*Math.sin(a*Math.PI/180)];
+  const s=pt(a0),e=pt(a1-10),q=pt(a1),d=[-Math.sin(a1*Math.PI/180),-Math.cos(a1*Math.PI/180)],n=[d[1],-d[0]];
+  const tip=[q[0]+d[0]*3.2,q[1]+d[1]*3.2],b1=[q[0]-d[0]*3+n[0]*3.9,q[1]-d[1]*3+n[1]*3.9],b2=[q[0]-d[0]*3-n[0]*3.9,q[1]-d[1]*3-n[1]*3.9];
+  h+='<g id="face2"><g opacity=".8"><path d="M'+f1(s[0])+' '+f1(s[1])+'A'+r+' '+r+' 0 1 0 '+f1(e[0])+' '+f1(e[1])+'" '+L(1.45)+'/><path d="M'+f1(tip[0])+' '+f1(tip[1])+'L'+f1(b1[0])+' '+f1(b1[1])+'L'+f1(b2[0])+' '+f1(b2[1])+'Z" fill="currentColor"/></g><text x=".5" y="12" font-size="36" '+T+'>i</text></g>';}
+ // IMAGO: z̄ の背後に鏡の破線、左右に向かい合う三角（実像は塗り、鏡像は輪郭）
+ h+='<g id="face3"><g opacity=".7"><path d="M0-25V25" '+L(1.05)+' stroke-dasharray="1.6 3.4"/><path d="M-24-4.2L-17.4 0L-24 4.2Z" fill="currentColor"/><path d="M24-4.2L17.4 0L24 4.2Z" '+L(1.15)+'/></g><text x=".4" y="11.2" font-size="32" '+T+'>z</text><path d="M-6.8 -8.6H9.2" '+L(2.5)+'/></g>';
+ // MAGNA: k を四隅の括弧で囲む
+ h+='<g id="face4"><g opacity=".78"><path d="M-12-19.5H-19.5V-12M12-19.5H19.5V-12M-12 19.5H-19.5V12M12 19.5H19.5V12" '+L(1.5)+'/></g><text x=".2" y="11" font-size="33" '+T+'>k</text></g>';
+ // SPIRA: 1+i の上に小さな渦（対数螺旋）
+ {let d='';for(let k=0;k<=40;k++){const t=k/40*2.5*Math.PI,r=1.1*Math.exp(.235*t),x=r*Math.cos(t),y=-13.2-r*Math.sin(t);d+=(k?'L':'M')+f1(x)+' '+f1(y);}
+  h+='<g id="face5"><g opacity=".8"><path d="'+d+'" '+L(1.45)+'/></g><text x="0" y="14.2" font-size="23.5" letter-spacing="-.4" '+T+'>1+i</text></g>';}
+ $('faces').innerHTML=h;
+}
+// 駒（中心 0,0・半径 36）。metal は 'au'（金＝先手）か 'ag'（銀＝後手）
+const coin=(m,t)=>'<use href="#coin-'+m+'"/><use href="#face'+t+'" class="hi-'+m+'" transform="translate(.85 .95)"/><use href="#face'+t+'" class="ink-'+m+'"/>';
+const coinSvg=(m,t)=>'<svg viewBox="-38 -37 82 84">'+coin(m,t)+'</svg>';
+function ticks(cx,cy,r,spec){ // spec: [[step,len,width,opacity],...] 細かい順。重なる角度は長い方だけ描く
+ let h='';
+ for(let a=0;a<360;a+=spec[0][0]){
+  let s=spec[0];for(const q of spec)if(a%q[0]===0)s=q;
+  const c=Math.cos(a*Math.PI/180),sn=Math.sin(a*Math.PI/180);
+  h+='<line x1="'+f1(cx+r*c)+'" y1="'+f1(cy-r*sn)+'" x2="'+f1(cx+(r+s[1])*c)+'" y2="'+f1(cy-(r+s[1])*sn)+'" stroke-width="'+s[2]+'" opacity="'+s[3]+'"/>';
+ }
+ return h;
+}
+function buildSky(){
+ const r=E.rng(1543);let h='';
+ for(let i=0;i<150;i++){const big=r()<.07;h+='<circle cx="'+f1(r()*1000)+'" cy="'+f1(r()*1000)+'" r="'+(big?.9+r()*.5:.25+r()*.5).toFixed(2)+'" fill="'+(r()<.28?'#ffe9b0':'#dfe6f5')+'" opacity="'+(big?.5+r()*.3:.12+r()*.4).toFixed(2)+'"/>';}
+ $('sky').innerHTML=h;
+}
+function buildTitle(){
+ const c=280;let h='';
+ h+='<defs><linearGradient id="gTitle" gradientUnits="userSpaceOnUse" x1="280" y1="248" x2="280" y2="316"><stop offset="0" stop-color="#fff3c2"/><stop offset=".28" stop-color="#f1d27c"/><stop offset=".55" stop-color="#d2a548"/><stop offset=".8" stop-color="#b08430"/><stop offset="1" stop-color="#c79a40"/></linearGradient></defs>';
+ // 目盛り環: 外周の真鍮線＋ 0〜360° の刻み
+ h+='<circle cx="'+c+'" cy="'+c+'" r="266" fill="none" stroke="url(#gBrassLine)" stroke-width="2.6"/>';
+ h+='<circle cx="'+c+'" cy="'+c+'" r="267.6" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="1" transform="translate(1.2 1.6)"/>';
+ h+='<g stroke="#d9bd7a" stroke-linecap="butt">'+ticks(c,c,244,[[2,7,.7,.5],[10,13,1,.75],[30,22,1.7,1]])+'</g>';
+ h+='<circle cx="'+c+'" cy="'+c+'" r="244" fill="none" stroke="#c9a45a" stroke-opacity=".7" stroke-width=".9"/>';
+ for(let a=0;a<360;a+=30){const x=c+229*Math.cos(a*Math.PI/180),y=c-229*Math.sin(a*Math.PI/180);
+  h+='<text x="'+f1(x)+'" y="'+f1(y+3.2)+'" text-anchor="middle" font-family="Times New Roman,Times,Georgia,serif" font-size="9.5" fill="#c9a45a" opacity=".62" letter-spacing=".5">'+a+'°</text>';}
+ // 原点の玉座（光と二重の輪）
+ h+='<circle cx="'+c+'" cy="186" r="46" fill="url(#gLuxSoft)"/><circle cx="'+c+'" cy="186" r="15" fill="none" stroke="#f0d07a" stroke-width="1.2"/><circle cx="'+c+'" cy="186" r="19.5" fill="none" stroke="#f0d07a" stroke-opacity=".5" stroke-width=".7"/><circle cx="'+c+'" cy="186" r="3.2" fill="#fff6da"/>';
+ // ORIGO: 浮き出しの金文字（右下に影、左上に光）
+ const tt='x="'+(c+11)+'" y="312" text-anchor="middle" font-family="Times New Roman,Times,Georgia,serif" font-weight="700" font-size="84" letter-spacing="22"';
+ h+='<text '+tt+' fill="#000" opacity=".6" transform="translate(2.4 3.4)">ORIGO</text><text '+tt+' fill="#fffbe6" opacity=".75" transform="translate(-.7 -.8)">ORIGO</text><text '+tt+' fill="url(#gTitle)">ORIGO</text>';
+ h+='<line x1="212" y1="338" x2="348" y2="338" stroke="#c9a45a" stroke-opacity=".45" stroke-width=".8"/>';
+ h+='<text x="'+(c+6)+'" y="368" text-anchor="middle" font-size="15.5" letter-spacing="12" fill="#cdb884" style="font-family:var(--serif)">複素数平面の変換対局</text>';
+ $('tRing').innerHTML=h;
+ $('tCoins').innerHTML=PRISM.map(t=>'<figure>'+coinSvg('au',t)+'<figcaption>'+NAME[t]+'</figcaption></figure>').join('');
+}
+// 盤の静的レイヤ: 真鍮の縁・留め具・藍のマットな地・目盛り環・格子・玉座
+const px=x=>380+x*90, py=y=>380-y*90;
+function buildBoard(){
+ let h='<defs>'
+  +'<radialGradient id="gPlate" gradientUnits="userSpaceOnUse" cx="290" cy="250" r="560"><stop offset="0" stop-color="#18225a"/><stop offset=".5" stop-color="#0d1438"/><stop offset="1" stop-color="#070a20"/></radialGradient>'
+  +'<filter id="fSoft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="11"/></filter>'
+  +'<linearGradient id="gLip" gradientUnits="userSpaceOnUse" x1="30" y1="30" x2="730" y2="730"><stop offset="0" stop-color="#1c1304"/><stop offset=".5" stop-color="#5a4218"/><stop offset="1" stop-color="#e3cc8c"/></linearGradient>'
+  +'<filter id="fGrain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7"/><feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  .55 0 0 0 -.2"/><feComposite in2="SourceGraphic" operator="in"/></filter>'
+  +'<filter id="fBrush" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9 .012" numOctaves="2" seed="4"/><feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1.5 0 0 0 -.52"/><feComposite in2="SourceGraphic" operator="in"/></filter>'
+  +'<clipPath id="clipPlate"><rect x="30" y="30" width="700" height="700" rx="13"/></clipPath>'
+  +'</defs>';
+ const bez='M36 6H724A30 30 0 0 1 754 36V724A30 30 0 0 1 724 754H36A30 30 0 0 1 6 724V36A30 30 0 0 1 36 6Z M43 30A13 13 0 0 0 30 43V717A13 13 0 0 0 43 730H717A13 13 0 0 0 730 717V43A13 13 0 0 0 717 30Z';
+ // 地（マット）
+ h+='<rect x="30" y="30" width="700" height="700" rx="13" fill="url(#gPlate)"/>';
+ h+='<rect x="30" y="30" width="700" height="700" rx="13" fill="#fff" filter="url(#fGrain)" opacity=".2"/>';
+ // 目盛り環（地に彫った細線。主役ではないので薄く）
+ h+='<g clip-path="url(#clipPlate)"><circle cx="380" cy="380" r="304" fill="none" stroke="#c9a45a" stroke-opacity=".3" stroke-width=".8"/><g stroke="#c9a45a">'+ticks(380,380,304,[[5,5,.8,.28],[10,8,.9,.4],[30,13,1.3,.6]])+'</g></g>';
+ // 格子（真鍮の細線）と軸
+ let g='';
+ for(let k=-3;k<=3;k++){const ax=k===0;
+  g+='<line x1="'+px(k)+'" y1="'+py(-3)+'" x2="'+px(k)+'" y2="'+py(3)+'" stroke-width="'+(ax?1.5:1)+'" opacity="'+(ax?.85:.36)+'"/>';
+  g+='<line x1="'+px(-3)+'" y1="'+py(k)+'" x2="'+px(3)+'" y2="'+py(k)+'" stroke-width="'+(ax?1.5:1)+'" opacity="'+(ax?.85:.36)+'"/>';}
+ h+='<g stroke="#c9a45a">'+g+'</g>';
+ for(let i=0;i<NN;i++)if(i!==E.O)h+='<circle cx="'+px(X[i])+'" cy="'+py(Y[i])+'" r="2.1" fill="#dcc07a" opacity=".7"/>';
+ // 座標の目盛り（横: −3〜3、縦: 虚軸 3i〜−3i）
+ const lab='font-family="Times New Roman,Times,Georgia,serif" font-style="italic" font-size="21" fill="#d6ba7c" opacity=".9"';
+ for(let k=-3;k<=3;k++){
+  h+='<text x="'+px(k)+'" y="'+(py(-3)+69)+'" text-anchor="middle" '+lab+'>'+(k<0?'−'+(-k):k)+'</text>';
+  if(k)h+='<text x="'+(px(-3)-49)+'" y="'+(py(k)+7)+'" text-anchor="end" '+lab+'>'+(k<0?'−':'')+(Math.abs(k)===1?'':Math.abs(k))+'i</text>';}
+ // 原点 O: 光と二重の輪の「玉座」
+ h+='<circle cx="380" cy="380" r="92" fill="url(#gLuxSoft)"/>';
+ h+='<circle cx="380" cy="380" r="42.5" fill="none" stroke="#f0d07a" stroke-width="1.5" opacity=".95"/><circle cx="380" cy="380" r="47.5" fill="none" stroke="#f0d07a" stroke-width=".8" opacity=".55"/>';
+ h+='<circle cx="380" cy="380" r="9" fill="none" stroke="#f6dc94" stroke-width="1.1"/><circle cx="380" cy="380" r="2.8" fill="#fff6da"/>';
+ h+='<text x="419" y="341" text-anchor="middle" font-family="Times New Roman,Times,Georgia,serif" font-style="italic" font-size="19" fill="#f0d07a" opacity=".95">O</text>';
+ // 縁が地に落とす影（光は左上から）
+ h+='<g clip-path="url(#clipPlate)"><path d="M26 734V26H734" fill="none" stroke="#000" stroke-width="20" opacity=".62" filter="url(#fSoft)"/></g>';
+ // 真鍮の縁
+ h+='<path d="'+bez+'" fill-rule="evenodd" fill="url(#gBrass)"/>';
+ h+='<path d="'+bez+'" fill-rule="evenodd" fill="#fff" filter="url(#fBrush)" opacity=".16"/>';
+ h+='<rect x="30" y="30" width="700" height="700" rx="13" fill="none" stroke="url(#gLip)" stroke-width="1.1" opacity=".85"/>';
+ h+='<rect x="6.7" y="6.7" width="746.6" height="746.6" rx="29.4" fill="none" stroke="url(#gEdge)" stroke-width="1.4"/>';
+ h+='<rect x="18" y="18" width="724" height="724" rx="21" fill="none" stroke="#2a1d06" stroke-opacity=".5" stroke-width=".8"/><rect x="18.8" y="18.8" width="724" height="724" rx="21" fill="none" stroke="#fff3c8" stroke-opacity=".35" stroke-width=".7"/>';
+ // 四隅の留め具（溝の向きは少しずつ違える）
+ [[25,25,24],[735,25,-58],[25,735,71],[735,735,-12]].forEach(s=>{
+  h+='<g transform="translate('+s[0]+' '+s[1]+')"><circle cx=".9" cy="1.3" r="7.6" fill="#000" opacity=".5"/><circle r="6.8" fill="url(#gScrew)"/><circle r="6.8" fill="none" stroke="url(#gEdge)" stroke-width=".9"/><g transform="rotate('+s[2]+')"><line x1="-4.6" x2="4.6" stroke="#241803" stroke-width="1.7"/><line x1="-4.6" x2="4.6" y1=".9" y2=".9" stroke="#fff3c8" stroke-opacity=".55" stroke-width=".6"/></g></g>';});
+ $('boardBg').innerHTML=h;
+}
 
 // ---------- 状態 ----------
-const G={s:null,stack:[],human:1,sel:-1,ro:false,moves:[],hot:-1,busy:false,lastEx:null,over:false};
+const G={s:null,stack:[],human:1,sel:-1,ro:false,moves:[],hot:-1,busy:false,lastEx:null};
 const svg=$('board');
-const px=x=>350+x*90, py=y=>350-y*90;
+const metal=side=>side===G.s.first?'au':'ag';   // 金＝先手、銀＝後手
 const fmt=(x,y)=>{
  if(!x&&!y)return '0';let s='';
  if(x)s+=(x<0?'−':'')+Math.abs(x);
@@ -539,34 +735,13 @@ function pathPoint(from,to,ex,t){
  return [fx+(X[to]-fx)*t,fy+(Y[to]-fy)*t];
 }
 function pathD(from,to,ex){
- let d='';const n=(ex&&ex.tf.w)?18:1;
+ let d='';const n=(ex&&ex.tf.w)?20:1;
  for(let k=0;k<=n;k++){const p=pathPoint(from,to,ex,k/n);d+=(k?'L':'M')+px(p[0]).toFixed(1)+' '+py(p[1]).toFixed(1);}
  return d;
 }
-function glyph(t,cls){
- if(t===E.K)return '<circle class="gl ln" r="15"/><circle class="gl" r="6"/>';
- if(t===E.MIR)return '<text class="gl" y="10" font-size="30">z</text><line class="gl ln" x1="-9" y1="-12" x2="9" y2="-12"/>';
- if(t===E.SPI)return '<text class="gl" y="7" font-size="21">1+i</text>';
- return '<text class="gl" y="10" font-size="31">'+GLY[t]+'</text>';
+function pieceSvg(p,v,pre){
+ return '<g class="pc" data-p="'+p+'" transform="translate('+px(X[p])+','+py(Y[p])+')">'+(pre||'')+coin(metal(Math.sign(v)),Math.abs(v))+'</g>';
 }
-function pieceSvg(p,v,extra){
- const t=Math.abs(v),side=v>0?'me':'op';
- return '<g class="pc '+side+(extra||'')+'" data-p="'+p+'" transform="translate('+px(X[p])+','+py(Y[p])+')"><circle class="disc" r="'+(t===E.K?33:30)+'"/>'+glyph(t)+'</g>';
-}
-function staticGrid(){
- let h='';
- for(let k=-3;k<=3;k++){
-  const c=k===0?'g-axis':'g-line';
-  h+='<line class="'+c+'" x1="'+px(k)+'" y1="'+py(-3)+'" x2="'+px(k)+'" y2="'+py(3)+'"/>';
-  h+='<line class="'+c+'" x1="'+px(-3)+'" y1="'+py(k)+'" x2="'+px(3)+'" y2="'+py(k)+'"/>';
-  h+='<text class="g-lab" x="'+px(k)+'" y="'+(py(-3)+62)+'" text-anchor="middle">'+(k<0?'−'+(-k):k)+'</text>';
-  if(k)h+='<text class="g-lab" x="'+(px(-3)-48)+'" y="'+(py(k)+6)+'" text-anchor="end">'+(k<0?'−':'')+(Math.abs(k)===1?'':Math.abs(k))+'i</text>';
- }
- for(let i=0;i<NN;i++)h+='<circle class="g-pt" cx="'+px(X[i])+'" cy="'+py(Y[i])+'" r="3.2"/>';
- return h;
-}
-const GRID=staticGrid();
-
 function movesOf(p){
  const s=G.s,side=Math.sign(s.b[p]);
  return E.legal(s.b,side,s.rep).filter(m=>((m/NN)|0)===p).map(m=>m%NN);
@@ -577,39 +752,38 @@ function originReach(side){
 }
 
 function render(skip){
- const s=G.s,b=s.b;let h=GRID;
- // 原点
+ const s=G.s,b=s.b;let h='';
+ // 原点に手が届くとき、玉座の輪が明滅する（色は届く側の金属）
  const myR=!s.result&&originReach(G.human),opR=!s.result&&originReach(-G.human);
- h+='<circle class="orig'+(myR||opR?' hot':'')+(opR?' danger':'')+'" cx="350" cy="350" r="40"/>';
- if(!b[E.O])h+='<text class="g-lab" x="350" y="358" text-anchor="middle" style="font-size:22px;opacity:.8">O</text>';
+ if(myR||opR)h+='<circle class="orighot m-'+metal(opR?-G.human:G.human)+'" style="fill:none" cx="380" cy="380" r="45"/>';
  // 直前の手
- if(s.last&&G.lastEx){
-  h+='<path class="last" d="'+pathD(s.last.from,s.last.to,G.lastEx)+'"/><circle class="lastdot" cx="'+px(X[s.last.from])+'" cy="'+py(Y[s.last.from])+'" r="8"/>';
- }
+ if(s.last&&G.lastEx)h+='<path class="last" d="'+pathD(s.last.from,s.last.to,G.lastEx)+'"/><circle class="lastdot" cx="'+px(X[s.last.from])+'" cy="'+py(Y[s.last.from])+'" r="6"/>';
  // 相手の利き
- const thr=new Uint8Array(NN);
+ const thr=new Uint8Array(NN),om=metal(-G.human);
  if(P.threat&&!s.result){const buf=new Int32Array(512),n=E.gen(b,-G.human,buf);for(let i=0;i<n;i++)thr[buf[i]%NN]=1;}
- // 選択中の駒の作図
- const selSide=G.sel>=0?Math.sign(b[G.sel]):0;
+ // 選択中の駒の作図（軌跡は光で描く）
  let cons='',dst='',hotEx=null;
  if(G.sel>=0){
   for(const to of G.moves){
-   const ex=E.explain(b,G.sel,to)[0],hot=to===G.hot;
-   if(hot)hotEx=ex;
-   cons+='<path class="cons'+(G.ro?' ro':'')+(hot?' hot':'')+'" d="'+pathD(G.sel,to,ex)+'"/>';
-   dst+='<g class="dst'+(b[to]?' cap':'')+(G.ro?' ro':'')+'" data-to="'+to+'" transform="translate('+px(X[to])+','+py(Y[to])+')"><circle class="mk" r="'+(b[to]?38:10)+'"/><circle class="hit" r="42"/></g>';
+   const ex=E.explain(b,G.sel,to)[0],hot=to===G.hot,d=pathD(G.sel,to,ex);
+   if(hot){hotEx=ex;cons+='<path class="consG" d="'+d+'"/>';}
+   cons+='<path class="cons'+(G.ro?' ro':'')+(hot?' hot':'')+'" d="'+d+'"/>';
+   dst+='<g class="dst'+(G.ro?' ro':'')+'" data-to="'+to+'" transform="translate('+px(X[to])+','+py(Y[to])+')">'
+    +(b[to]?'<circle class="ringG" r="42"/><circle class="ring" r="42"/>':'<circle r="24" fill="url(#gLux)"/><circle class="core" r="5"/>')+'<circle class="hit" r="44"/></g>';
   }
  }
  if(hotEx)h+=overlay(G.sel,G.hot,hotEx);
  h+=cons;
+ for(let p=0;p<NN;p++)if(thr[p]&&!b[p]){const x=px(X[p])+15,y=py(Y[p])-15;h+='<rect class="thr m-'+om+'" stroke="none" x="'+(x-2.8)+'" y="'+(y-2.8)+'" width="5.6" height="5.6" transform="rotate(45 '+x+' '+y+')"/>';}
  // 駒
  const chk=E.inCheck(b,s.turn)?E.kingPos(b,s.turn):-1;
  for(let p=0;p<NN;p++){if(!b[p]||p===skip)continue;
-  let ex='';if(p===G.sel)ex+=' sel';if(p===chk)ex+=' chk';
-  h+=pieceSvg(p,b[p],ex);
-  if(thr[p]&&b[p]*G.human>0)h+='<circle class="thrR" cx="'+px(X[p])+'" cy="'+py(Y[p])+'" r="38"/>';
+  let pre='';
+  if(p===G.sel)pre+='<circle r="62" fill="url(#gLux)"/><circle class="selring" r="40.5"/>';
+  if(p===chk)pre+='<circle r="64" fill="url(#gLux)"/><circle class="chkring" r="41.5"/>';
+  h+=pieceSvg(p,b[p],pre);
+  if(thr[p]&&b[p]*G.human>0)h+='<circle class="thrR m-'+om+'" cx="'+px(X[p])+'" cy="'+py(Y[p])+'" r="41.5"/>';
  }
- for(let p=0;p<NN;p++)if(thr[p]&&!b[p]){const x=px(X[p])+13,y=py(Y[p])-13;h+='<rect class="thr" x="'+(x-4)+'" y="'+(y-4)+'" width="8" height="8" transform="rotate(45 '+x+' '+y+')"/>';}
  h+=dst+'<g id="anim"></g>';
  svg.innerHTML=h;
  renderSide();
@@ -620,44 +794,41 @@ function overlay(from,to,ex){
  if(ex.c<0)return h;
  const cx=px(X[ex.c]),cy=py(Y[ex.c]),id=ex.tf.id;
  const ax={h:[1,0],v:[0,1],d:[1,1],a:[1,-1]}[id];
- if(ax){const L=7;h+='<line class="axisln" x1="'+px(X[ex.c]-ax[0]*L)+'" y1="'+py(Y[ex.c]-ax[1]*L)+'" x2="'+px(X[ex.c]+ax[0]*L)+'" y2="'+py(Y[ex.c]+ax[1]*L)+'" clip-path="url(#clipB)"/>';}
- else{
-  h+='<line class="ray" x1="'+cx+'" y1="'+cy+'" x2="'+px(X[from])+'" y2="'+py(Y[from])+'"/><line class="ray" x1="'+cx+'" y1="'+cy+'" x2="'+px(X[to])+'" y2="'+py(Y[to])+'"/>';
- }
- h+='<circle class="pivot" cx="'+cx+'" cy="'+cy+'" r="41"/>';
- return '<defs><clipPath id="clipB"><rect x="40" y="40" width="620" height="620"/></clipPath></defs>'+h;
+ if(ax){const L=7;h+='<line class="axisln" x1="'+px(X[ex.c]-ax[0]*L)+'" y1="'+py(Y[ex.c]-ax[1]*L)+'" x2="'+px(X[ex.c]+ax[0]*L)+'" y2="'+py(Y[ex.c]+ax[1]*L)+'" clip-path="url(#clipPlate)"/>';}
+ else h+='<line class="ray" x1="'+cx+'" y1="'+cy+'" x2="'+px(X[from])+'" y2="'+py(Y[from])+'"/><line class="ray" x1="'+cx+'" y1="'+cy+'" x2="'+px(X[to])+'" y2="'+py(Y[to])+'"/>';
+ h+='<circle class="pivot" cx="'+cx+'" cy="'+cy+'" r="43"/>';
+ return h;
 }
 function showFormula(title,from,to,ex,t){
- const f='<span>z′ = '+FX[ex.tf.id]+'</span>';
- let d='';
- if(ex.c>=0)d='c = '+zf(ex.c)+'，　z = '+zf(from)+' → z′ = '+zf(to);
- else d='z = '+zf(from)+' → z′ = '+zf(to);
+ const d=(ex.c>=0?'c = '+zf(ex.c)+'，　':'')+'z = '+zf(from)+' → z′ = '+zf(to);
  $('fmT').textContent=title+'｜'+NAME[t]+'：'+TN[ex.tf.id];
- $('fmF').innerHTML=f+'<small class="n">'+d+'</small>';
+ $('fmF').innerHTML='<span>z′ = '+FX[ex.tf.id]+'</span><small>'+d+'</small>';
 }
 function renderSide(){
  const s=G.s,st=$('status');
- let txt='',cls='';
- if(s.result){txt='対局終了';}
- else if(s.turn===G.human){cls='me';txt='あなたの番です';
-  if(E.inCheck(s.b,s.turn)){txt='核が狙われています。受けてください';cls='me warn';}
-  else if(s.b[E.O]===-G.human*E.K){txt='相手の核が原点にいます。この 1 手で狙えなければ負けです';cls='me warn';}
-  else if(originReach(-G.human)){txt='相手の核が次に原点へ入れます。原点に利きを作ってください';cls='me warn';}
-  else if(originReach(G.human)){txt='核を原点 O へ進められます（相手が 1 手で狙えなければ勝ち）';}
- }else{cls='op';txt='CPU が考えています…';}
+ let txt='',cls=metal(s.turn);
+ if(s.result){txt='対局終了';cls='';}
+ else if(s.turn===G.human){txt='あなたの番です';
+  if(E.inCheck(s.b,s.turn)){txt='POLUS が狙われています。受けてください';cls+=' warn';}
+  else if(s.b[E.O]===-G.human*E.K){txt='相手の POLUS が原点にいます。この 1 手で狙えなければ負けです';cls+=' warn';}
+  else if(originReach(-G.human)){txt='相手の POLUS が次に原点へ入れます。原点に利きを作ってください';cls+=' warn';}
+  else if(originReach(G.human)){txt='POLUS を原点 O へ進められます（相手が 1 手で狙えなければ勝ち）';}
+ }else txt='CPU が考えています…';
  st.className=cls;$('stText').textContent=txt;
  $('plyNo').textContent=(s.ply+1)+' 手目・CPU '+LV[P.level].name;
- // 取った駒
+ // 取った駒（相手の金属）／取られた駒（自分の金属）
  const cnt={1:[0,0,2,1,1,1],'-1':[0,0,2,1,1,1]};
  for(let p=0;p<NN;p++)if(s.b[p])cnt[Math.sign(s.b[p])][Math.abs(s.b[p])]--;
- const lst=side=>{let r=[];for(let t=2;t<=5;t++)for(let k=0;k<cnt[side][t];k++)r.push(t===E.MIR?'z̄':GLY[t]);return r.length?r.join('  '):'—';};
- $('capMe').textContent=lst(-G.human);$('capOp').textContent=lst(G.human);
+ const lst=side=>{let r='';for(const t of PRISM)for(let k=0;k<cnt[side][t];k++)r+=coinSvg(metal(side),t);return r||'<span style="opacity:.5">—</span>';};
+ $('capMe').innerHTML=lst(-G.human);$('capOp').innerHTML=lst(G.human);
  $('btUndo').disabled=G.busy||G.stack.length<2;
  const selT=G.sel>=0?Math.abs(s.b[G.sel]):0;
  document.querySelectorAll('.leg').forEach(el=>el.classList.toggle('on',+el.dataset.t===selT));
 }
 function buildLegend(){
- $('legend').innerHTML=LEG.map(l=>'<div class="leg" data-t="'+l[0]+'"><svg viewBox="-36 -36 72 72"><g class="pc me"><circle class="disc" r="'+(l[0]===E.K?33:30)+'"/>'+glyph(l[0])+'</g></svg><div class="nm">'+NAME[l[0]]+'<i>z′ = '+l[1]+'</i></div><div class="ds">'+l[2]+'</div></div>').join('');
+ const m=metal(G.human);
+ $('legend').innerHTML=PRISM.map(t=>'<div class="leg" data-t="'+t+'">'+coinSvg(m,t)+'<div class="nm">'+NAME[t]+'<em>'+JP[t]+'</em><i>z′ = '+LEG[t][0]+'</i></div><div class="ds">'+LEG[t][1]+'</div></div>').join('');
+ $('ruleTable').innerHTML=PRISM.map(t=>'<tr><td>'+coinSvg(m,t)+'</td><td>'+NAME[t]+'<em>'+JP[t]+'</em></td><td>'+LEG[t][2]+'</td></tr>').join('');
 }
 
 // ---------- 入力 ----------
@@ -665,8 +836,8 @@ function select(p){
  const s=G.s;G.sel=p;G.hot=-1;G.ro=Math.sign(s.b[p])!==G.human||s.turn!==G.human||!!s.result;
  G.moves=movesOf(p);
  const t=Math.abs(s.b[p]),mine=Math.sign(s.b[p])===G.human;
- $('fmT').textContent=(mine?'':'相手の')+NAME[t]+'｜'+(G.moves.length?(G.ro&&mine?'（相手の番）':'')+'跳べる点 '+G.moves.length+' か所'+(G.ro?'':'。点を選ぶと動きます'):(t===E.K?'動ける点がありません':'今は動けません（盤内に移る変換がない、または核が危険）'));
- $('fmF').innerHTML='z′ = '+LEG.find(l=>l[0]===t)[1].replace('z̄',o('z − c'));
+ $('fmT').textContent=(mine?'':'相手の ')+NAME[t]+'｜'+(G.moves.length?(G.ro&&mine?'（相手の番）':'')+'跳べる点 '+G.moves.length+' か所'+(G.ro?'':'。点を選ぶと動きます'):(t===E.K?'動ける点がありません':'今は動けません（盤内に移る変換がない、または POLUS が危険）'));
+ $('fmF').innerHTML='z′ = '+LEG[t][0];
  Snd.fx.select();render();
 }
 function deselect(){G.sel=-1;G.moves=[];G.hot=-1;render();}
@@ -705,9 +876,9 @@ function play(a){
  showFormula(mover===G.human?'あなた':'CPU',a.from,a.to,ex,t);
  render(a.from);
  // 作図を見せながら、変換の軌跡どおりに駒を動かす
- const an=$('anim');
- an.innerHTML=overlay(a.from,a.to,ex)+'<path class="cons hot'+(mover===G.human?'':' ro')+'" d="'+pathD(a.from,a.to,ex)+'" style="opacity:.55"/>'+pieceSvg(a.from,s.b[a.from],' mv');
- const g=an.querySelector('.mv');g.style.pointerEvents='none';
+ const an=$('anim'),d=pathD(a.from,a.to,ex);
+ an.innerHTML=overlay(a.from,a.to,ex)+'<path class="consG" d="'+d+'"/><path class="cons hot" d="'+d+'" style="opacity:.8"/>'+pieceSvg(a.from,s.b[a.from]);
+ const g=an.querySelector('.pc');g.style.pointerEvents='none';
  Snd.fx.move(t,ex.tf.id);
  const dur=mover===G.human?(t===E.K?220:430):(t===E.K?420:760),t0=performance.now();
  const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -743,13 +914,16 @@ function cpu(){
 function finish(){
  const r=G.s.result,st=store.get('stat',{});
  const k='L'+P.level;st[k]=st[k]||[0,0,0];
- let title,sub;
- const why={mate:'詰み — 核の逃げ場がありません',origin:'原点制圧 — 核が原点 O で 1 手をしのぎました',stale:'手なし — 指せる手がありません',limit:'120 手で決着がつきませんでした'}[r.reason];
+ let title;
+ const why={mate:'詰み — POLUS の逃げ場がありません',origin:'原点制圧 — POLUS が原点 O で 1 手をしのぎました',stale:'手なし — 指せる手がありません',limit:'120 手で決着がつきませんでした'}[r.reason];
  if(r.winner===G.human){title='勝ち';st[k][0]++;Snd.fx.win();}
  else if(r.winner===0){title='引き分け';st[k][2]++;Snd.fx.draw();}
  else{title='負け';st[k][1]++;Snd.fx.lose();}
  store.set('stat',st);
- $('resTitle').textContent=title;$('resSub').textContent=why+'（'+G.s.ply+' 手）';
+ // 勝った側の POLUS を掲げる（引き分けは両方）
+ $('resCoin').innerHTML=r.winner?coinSvg(metal(r.winner),E.K):coinSvg('au',E.K)+coinSvg('ag',E.K);
+ $('resTitle').textContent=title;$('resTitle').className=r.winner&&metal(r.winner)==='ag'?'ag':'';
+ $('resSub').textContent=why+'（'+G.s.ply+' 手）';
  $('resStat').textContent='CPU '+LV[P.level].name+' との通算　'+st[k][0]+' 勝 '+st[k][1]+' 敗'+(st[k][2]?' '+st[k][2]+' 分':'');
  setTimeout(()=>show('mdRes'),700);
 }
@@ -761,6 +935,7 @@ function newGame(){
 function start(s){
  G.s=s;G.stack=[s];G.sel=-1;G.moves=[];G.hot=-1;G.busy=false;G.lastEx=null;
  $('fmT').textContent='駒に触れると、跳べる点と変換が表示されます';$('fmF').innerHTML='z′ = c + w(z − c)';
+ buildLegend();
  render();
  if(!s.result&&s.turn!==G.human)cpu();
 }
@@ -776,8 +951,8 @@ function undo(){
 }
 
 // ---------- 画面部品 ----------
-function show(id){$(id).classList.add('show');}
-function hide(id){$(id).classList.remove('show');}
+function show(id){$(id).classList.add('show');if(id==='mdStart')document.body.classList.add('title-on');}
+function hide(id){$(id).classList.remove('show');if(id==='mdStart')document.body.classList.remove('title-on');}
 document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target.hasAttribute('data-close')||(e.target===m&&m.id!=='mdStart'))hide(m.id);}));
 function bindTog(id,key,after){
  const el=$(id);el.setAttribute('aria-pressed',P[key]);
@@ -812,10 +987,9 @@ $('recLoad').onclick=()=>{
  if(r.last)G.lastEx=E.explain(stack[stack.length-2].b,r.last.from,r.last.to)[0];
  render();
 };
-buildLegend();
+buildFaces();buildSky();buildTitle();buildBoard();
 start(E.newGame({seed:1,first:1}));
-G.busy=true;        // 開始画面を閉じるまで盤は触れない
-show('mdStart');
+G.busy=true;        // タイトルを閉じるまで盤は触れない
 window.__origo={G,E,P,play,Snd};
 })();
 </script>
