@@ -178,6 +178,26 @@ body.ts-on #boardWrap{max-width:min(690px,calc(100dvh - 330px))}
 .ts-q.done::after{content:"";position:absolute;right:6px;top:6px;width:9px;height:9px;border-radius:50%;
   background:radial-gradient(circle at 35% 30%,#fff3c4,#e2bb58 50%,#8d651d);box-shadow:0 0 6px rgba(255,233,176,.5)}
 .ts-q.today{box-shadow:inset 0 0 0 1px rgba(255,233,176,.55),0 0 12px rgba(255,233,176,.15)}
+.ts-q.seen::after{content:"";position:absolute;right:6px;top:6px;width:7px;height:7px;border-radius:50%;border:1px solid var(--mute);opacity:.85}
+#tsCard .tc-foot{flex-wrap:wrap}
+#tsMsg{min-width:0}
+/* 答え（手の表と、盤での再生） */
+#tsAns table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+#tsAns th{font-weight:400;font-size:10.5px;letter-spacing:.14em;color:var(--mute);text-align:left;padding:2px 4px}
+#tsAns td{padding:5px 4px;border-top:1px solid var(--hair);vertical-align:top;line-height:1.5;color:var(--text)}
+#tsAns tbody tr{cursor:pointer}
+#tsAns tbody tr.fut{opacity:.38}
+#tsAns tbody tr.cur td{background:rgba(255,233,176,.08)}
+#tsAns td.who{white-space:nowrap;color:var(--brass);font-size:11.5px;width:4.6em}
+#tsAns td.mv b{font-family:var(--serif);letter-spacing:.1em;font-weight:400;color:var(--brass-hi);margin-right:5px;font-size:12px}
+#tsAns td.rm{font-size:10.5px;color:var(--mute);text-align:right}
+.ta-note{font-size:11.5px;line-height:1.65;color:var(--mute);margin:8px 0 0;padding-left:1.1em}
+.ta-note li{margin:0}
+#taMsg{flex:1;font-size:13px;letter-spacing:.04em;color:var(--mute);min-width:0}
+#taMsg.good{color:var(--gold);font-weight:600}
+.ta-tools{display:flex;gap:6px}
+#tsAns .tc-foot .btn{padding:6px 14px;font-size:12px;letter-spacing:.1em}
+#tsAns .tc-foot .btn:disabled{opacity:.35}
 #tutClearCoin svg{width:84px;height:84px}
 #mdTut h2{font-size:22px;letter-spacing:.3em;padding-left:.3em;margin-top:4px}
 .tut-sum{list-style:none;padding:0;margin:12px auto 0;text-align:left;max-width:320px}
@@ -323,10 +343,18 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
   <section>
     <div id="status"><span class="dot"></span><span id="stText"></span><span id="plyNo"></span></div>
     <div id="tsCard" class="plate" aria-live="polite">
+      <div id="tsMain">
       <div class="tc-head"><span class="tc-step">詰めORIGO　第 <b id="tsNo">1</b> 問</span><span class="ts-tools"><button class="chip" id="tsHint" aria-pressed="false">ヒント</button><button class="chip" id="tsList">一覧</button><button class="chip" id="tsQuit">やめる</button></span></div>
       <div class="tc-title"><span id="tsTitle"></span><span class="ts-moves" id="tsMoves"></span></div>
       <div class="tc-text" id="tsText"></div>
-      <div class="tc-foot"><span id="tsMsg"></span><button class="btn" id="tsReset">最初から</button><button class="btn pri" id="tsNext" hidden>次の問題</button></div>
+      <div class="tc-foot"><span id="tsMsg"></span><button class="btn" id="tsAnswer">答え</button><button class="btn" id="tsReset">最初から</button><button class="btn pri" id="tsNext" hidden>次の問題</button></div>
+      </div>
+      <div id="tsAns" hidden>
+        <div class="tc-head"><span class="tc-step">答え　第 <b id="taNo">1</b> 問</span><span class="ts-tools"><button class="chip" id="taClose">閉じる</button></span></div>
+        <table><thead><tr><th>手番</th><th>手</th><th></th></tr></thead><tbody id="taRows"></tbody></table>
+        <ul class="ta-note"><li>初手：<b>この手だけが正解</b>です。</li><li>2 手目以降：<b>相手が最も粘った場合の手順の一例</b>です（あなたの手は唯一とは限りません）。</li></ul>
+        <div class="tc-foot"><span id="taMsg"></span><button class="btn" id="taPrev">◀ 戻る</button><button class="btn pri" id="taNext">進む ▶</button></div>
+      </div>
     </div>
     <div id="tutCard" class="plate" aria-live="polite">
       <div class="tc-head"><span class="tc-step">STEP <b id="tutNo">1</b> / 7</span><span class="tc-dots" id="tutDots"></span><button class="chip tc-quit" id="tutQuit">やめる</button></div>
@@ -430,7 +458,7 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
 
 <div class="modal" id="mdTsume"><div class="sheet">
   <h2>詰めORIGO</h2>
-  <p class="lead">「あと ○ 手」は自分の手の回数です。原点制圧は、原点に入って相手の応手をしのいだ時点で成立します。相手は勝ちを避ける応手を選びます。光る枠が今日の詰め、金の点は解いた問題です。</p>
+  <p class="lead">「あと ○ 手」は自分の手の回数です。原点制圧は、原点に入って相手の応手をしのいだ時点で成立します。相手は勝ちを避ける応手を選びます。光る枠が今日の詰め、金の点は解いた問題、細い輪は答えを見た問題です。</p>
   <div id="tsSections"></div>
   <div class="row"><button class="btn" id="tsClose">タイトルへ</button></div>
 </div></div>
@@ -1037,6 +1065,7 @@ function renderSide(){
  const lst=side=>{let r='';for(const t of PRISM)for(let k=0;k<cnt[side][t];k++)r+=coinSvg(metal(side),t);return r||'<span style="opacity:.5">—</span>';};
  $('capMe').innerHTML=lst(-G.human);$('capOp').innerHTML=lst(G.human);
  $('btUndo').disabled=G.busy||G.stack.length<2||!!G.tut||!!G.ts;
+ $('tsAnswer').disabled=G.busy||!!(G.ts&&G.ts.answer);
  $('btResign').hidden=!!(G.tut||G.ts);   // チュートリアルと詰めORIGO には「やめる」がある
  $('btResign').disabled=G.busy||!!s.result||s.turn!==G.human;
  $('btRec').disabled=!!G.tut||!!G.ts;   // チュートリアルと詰めORIGO は棋譜コードの対象外
@@ -1212,6 +1241,10 @@ $('tsHint').onclick=()=>{Snd.init();Ts.hint();};
 $('tsList').onclick=()=>{Snd.init();Ts.list();};
 $('tsQuit').onclick=()=>{Snd.init();Ts.quit();};
 $('tsReset').onclick=()=>{Snd.init();Ts.reset();};
+$('tsAnswer').onclick=()=>{Snd.init();Ts.answer();};
+$('taClose').onclick=()=>{Snd.init();Ts.closeAnswer();};
+$('taPrev').onclick=()=>{Snd.init();Ts.step(-1);};
+$('taNext').onclick=()=>{Snd.init();Ts.step(1);};
 $('tsNext').onclick=()=>{Snd.init();Ts.next();};
 $('tutQuit').onclick=()=>{Snd.init();Tut.quit();};
 $('tutNext').onclick=()=>{Snd.init();Tut.next();};
@@ -1396,10 +1429,39 @@ const TSUME=[
   {id:24,n:3,type:'mate',b:'....K.S....M.R....P.................s.p..m.rk..r.',first:[1,-1,3,1],src:'g57p14'}
 ];
 /*TSUME-END*/
+/*TSUMEANS-BEGIN*/
+const TSUME_ANS=[
+  {id:1,line:[[0,-1,0,0],[-3,2,2,-3]],alt:[1],end:'origin'},
+  {id:2,line:[[1,-1,-2,0]],alt:[1],end:'mate'},
+  {id:3,line:[[1,0,0,0],[-2,3,-1,2]],alt:[1],end:'origin'},
+  {id:4,line:[[1,-2,2,-2]],alt:[1],end:'mate'},
+  {id:5,line:[[0,1,0,0],[3,1,2,1]],alt:[1],end:'origin'},
+  {id:6,line:[[-1,-1,1,0]],alt:[1],end:'mate'},
+  {id:7,line:[[-1,0,0,0],[0,2,0,3]],alt:[1],end:'origin'},
+  {id:8,line:[[-1,-2,-1,-1]],alt:[1],end:'mate'},
+  {id:9,line:[[0,0,-1,0],[-3,0,-1,0],[0,-1,0,0],[-1,0,-1,2]],alt:[1,1],end:'origin'},
+  {id:10,line:[[0,-2,0,0],[0,-1,-2,3],[0,0,-3,-1]],alt:[1,3],end:'mate'},
+  {id:11,line:[[0,-2,0,-1],[-2,1,1,0],[0,-1,0,0],[1,0,-2,1]],alt:[1,1],end:'origin'},
+  {id:12,line:[[-1,-1,-2,0],[-1,2,-3,0],[0,-3,1,-3]],alt:[1,2],end:'mate'},
+  {id:13,line:[[0,-2,0,-1],[-3,2,1,0],[0,-1,0,0],[1,0,-3,2]],alt:[1,1],end:'origin'},
+  {id:14,line:[[0,-3,3,0],[-2,1,-1,2],[3,-1,3,1]],alt:[1,1],end:'mate'},
+  {id:15,line:[[3,-2,-3,-2],[0,1,1,1],[-1,0,0,0],[2,1,0,1]],alt:[1,1],end:'origin'},
+  {id:16,line:[[0,-3,-1,-3],[1,0,-1,0],[0,0,-3,1]],alt:[1,2],end:'mate'},
+  {id:17,line:[[0,-2,0,-1],[1,1,1,0],[-2,-1,1,0],[2,1,1,0],[0,-1,0,0],[1,0,-3,0]],alt:[1,3,1],end:'origin'},
+  {id:18,line:[[0,-3,-1,-3],[1,3,0,3],[2,-3,0,-3],[0,3,-1,3],[1,-1,1,-3]],alt:[1,2,2],end:'mate'},
+  {id:19,line:[[1,0,1,1],[1,3,2,3],[1,-1,1,0],[-3,0,0,-3],[1,0,0,0],[0,-3,-3,0]],alt:[1,2,1],end:'origin'},
+  {id:20,line:[[0,-2,1,-3],[1,1,1,0],[-2,-3,1,0],[-1,2,1,0],[1,-3,3,-3]],alt:[1,1,2],end:'mate'},
+  {id:21,line:[[0,-2,0,-1],[0,1,1,1],[0,0,0,3],[1,0,2,1],[0,-1,0,0],[2,1,1,2]],alt:[1,2,1],end:'origin'},
+  {id:22,line:[[0,0,-3,-1],[-1,3,0,3],[1,-2,2,-1],[0,3,1,3],[-3,-1,-1,0]],alt:[1,1,1],end:'mate'},
+  {id:23,line:[[1,0,0,1],[2,3,3,3],[0,1,-1,1],[-3,3,0,3],[0,-1,0,0],[0,3,-3,3]],alt:[1,1,1],end:'origin'},
+  {id:24,line:[[1,-1,3,1],[-1,3,-1,2],[1,-2,2,-3],[-2,3,2,-3],[3,-2,2,-3]],alt:[1,2,1],end:'mate'}
+];
+/*TSUMEANS-END*/
 const Ts=(function(){
  const T={K:E.K,R:E.ROT,M:E.MIR,S:E.SCA,P:E.SPI},TYPE={mate:'詰み',origin:'原点制圧'};
  const at=(x,y)=>E.idx(x,y),fr=m=>(m/NN)|0,to=m=>m%NN;
  const solved=()=>store.get('tsSolved',{});
+ const seen=()=>store.get('tsSeen',{});      // 解く前に答えを見た問題（解いた問題には数えない）
  function board(q){const b=new Array(NN).fill(0);for(let i=0;i<NN;i++){const c=q.b[i];if(c!=='.')b[i]=(c===c.toUpperCase()?1:-1)*T[c.toUpperCase()];}return b;}
  function initial(q){const b=board(q),s={b,turn:1,first:1,ply:0,seed:1,rep:{},result:null,last:null,log:[]};s.rep[E.key(b,1)]=1;return s;}
  // ---- 探索（sim/tsume-lib.js と同じ判定。盤を直接動かして戻す）
@@ -1451,6 +1513,7 @@ const Ts=(function(){
   const msg=$('tsMsg');msg.className=g.state==='fail'?'bad':g.state==='clear'?'good':'';
   msg.textContent=g.state==='fail'?'この手では勝てません':g.state==='clear'?g.clearText:(g.used?'残り '+(q.n-g.used)+' 手':'');
   $('tsNext').hidden=g.state!=='clear';
+  $('tsMain').hidden=!!g.answer;$('tsAns').hidden=!g.answer;$('tsAnswer').disabled=G.busy;
  }
  function begin(i){
   start(initial(TSUME[i]));
@@ -1459,20 +1522,21 @@ const Ts=(function(){
   card();render();
  }
  function list(){
-  const sv=solved(),td=today();let h='';
+  const sv=solved(),se=seen(),td=today();let h='';
   for(const n of [1,2,3]){
    h+='<div class="ts-sec"><h3>あと '+n+' 手</h3><div class="ts-grid">';
-   TSUME.forEach((q,i)=>{if(q.n!==n)return;h+='<button class="ts-q'+(sv[q.id]?' done':'')+(i===td?' today':'')+'" data-i="'+i+'"><b>'+q.id+'</b><span>'+TYPE[q.type]+'</span></button>';});
+   TSUME.forEach((q,i)=>{if(q.n!==n)return;h+='<button class="ts-q'+(sv[q.id]?' done':se[q.id]?' seen':'')+(i===td?' today':'')+'" data-i="'+i+'"><b>'+q.id+'</b><span>'+TYPE[q.type]+'</span></button>';});
    h+='</div></div>';
   }
   $('tsSections').innerHTML=h;
   hide('mdStart');show('mdTsume');
  }
+ $('taRows').addEventListener('click',e=>{const tr=e.target.closest('tr');if(tr){Snd.init();showStep(+tr.dataset.k);}});
  $('tsSections').addEventListener('click',e=>{const b=e.target.closest('.ts-q');if(!b)return;Snd.init();hide('mdTsume');begin(+b.dataset.i);});
  function refresh(){
-  const sv=solved(),n=TSUME.filter(q=>sv[q.id]).length,q=TSUME[today()];
-  $('stTsumeSub').textContent='解いた問題 '+n+' / '+TSUME.length;
-  if(q)$('stTodaySub').textContent='第 '+q.id+' 問・あと '+q.n+' 手'+(sv[q.id]?'・解いた':'');
+  const sv=solved(),se=seen(),n=TSUME.filter(q=>sv[q.id]).length,m=TSUME.filter(q=>!sv[q.id]&&se[q.id]).length,q=TSUME[today()];
+  $('stTsumeSub').textContent='解いた問題 '+n+' / '+TSUME.length+(m?' · 答えを見た '+m:'');
+  if(q)$('stTodaySub').textContent='第 '+q.id+' 問・あと '+q.n+' 手'+(sv[q.id]?'・解いた':se[q.id]?'・答えを見た':'');
  }
  return {
   today,list,refresh,
@@ -1481,11 +1545,12 @@ const Ts=(function(){
   next(){if(G.ts)begin((G.ts.i+1)%TSUME.length);},
   quit(){G.ts=null;document.body.classList.remove('ts-on');G.busy=true;refresh();show('mdStart');},
   hint(){if(!G.ts)return;G.ts.hint=!G.ts.hint;card();render();},
-  isLit(p){const g=G.ts,q=TSUME[g.i];return g.hint&&g.used===0&&g.state==='play'&&!G.busy&&G.sel!==p&&p===at(q.first[0],q.first[1]);},
-  canPlay(){return G.ts.state==='play';},
+  isLit(p){const g=G.ts,q=TSUME[g.i];return !g.answer&&g.hint&&g.used===0&&g.state==='play'&&!G.busy&&G.sel!==p&&p===at(q.first[0],q.first[1]);},
+  canPlay(){return G.ts.state==='play'&&!G.ts.answer;},
   // 検証用: いまの局面で残り手数以内に勝てる手を 1 つ返す
   winningMove(){const g=G.ts,rem=TSUME[g.i].n-g.used;memo=new Map();const b=G.s.b.slice(),rep=Object.assign({},G.s.rep);for(const m of E.legal(b,1,rep))if(mv(b,1,rem,rep,m))return {from:fr(m),to:to(m)};return null;},
-  blocked(){const m=$('tsMsg');m.classList.add('bad');m.textContent=G.ts.state==='fail'?'「最初から」でやり直せます':'解けました。「次の問題」へどうぞ';},
+  blocked(){const g=G.ts;if(g.answer){$('taMsg').textContent='答えの表示中です。「閉じる」で問題に戻れます';return;}const m=$('tsMsg');m.classList.add('bad');m.textContent=g.state==='fail'?'「最初から」でやり直せます':'解けました。「次の問題」へどうぞ';},
+  answer(){openAnswer();},closeAnswer(){closeAnswer();},step(d){step(d);},jump(k){showStep(k);},
   after(n){
    const g=G.ts,q=TSUME[g.i];
    if(n.turn===-1){                         // あなたが指した直後
@@ -1505,8 +1570,52 @@ const Ts=(function(){
  function clear(n){
   const g=G.ts,q=TSUME[g.i];g.state='clear';G.busy=false;
   g.clearText='正解　'+(n.result.reason==='origin'?'原点制圧':n.result.reason==='mate'?'詰み':'手なし')+'で勝ちました';
-  const sv=solved();sv[q.id]=1;store.set('tsSolved',sv);refresh();
+  const sv=solved();sv[q.id]=1;store.set('tsSolved',sv);
+  const se=seen();if(se[q.id]){delete se[q.id];store.set('tsSeen',se);}   // 答えを見たあとに自力で解けば「解いた」に昇格する
+  refresh();
   Snd.fx.win();card();render();
+ }
+ // ---- 答え: 手の表と、盤での 1 手ずつの再生（進む／戻る）。盤の見せ方は棋譜の再生と同じ（直前の手の軌跡と、盤の下の式）
+ function openAnswer(){
+  const g=G.ts;if(!g||G.busy||g.answer)return;
+  const q=TSUME[g.i],a=TSUME_ANS.find(x=>x.id===q.id);if(!a)return;
+  // 記録: 解く前に答えを見た問題は「答えを見た」。すでに解いた問題は、見ても何も変わらない
+  if(!solved()[q.id]){const se=seen();if(!se[q.id]){se[q.id]=1;store.set('tsSeen',se);}refresh();}
+  const states=[initial(q)],exs=[null];
+  for(const m of a.line){const s0=states[states.length-1],f=at(m[0],m[1]),t=at(m[2],m[3]);exs.push(E.explain(s0.b,f,t)[0]);states.push(E.apply(s0,{from:f,to:t}));}
+  g.answer={a,q,states,exs,k:0,saved:{s:G.s,stack:G.stack,lastEx:G.lastEx,sel:G.sel,moves:G.moves,hot:G.hot,ro:G.ro}};
+  $('taNo').textContent=q.id;
+  let h='';
+  a.line.forEach((m,i)=>{
+   const mine=i%2===0,s0=states[i],f=at(m[0],m[1]),t=at(m[2],m[3]),ex=exs[i+1],pt=Math.abs(s0.b[f]);
+   const rm=mine?(i===0?'この手だけが正解':(a.alt[i/2]>1?'一例（ほかにも勝ち手あり）':'一例')):'最も粘る手';
+   h+='<tr data-k="'+(i+1)+'"><td class="who">'+(mine?'あなた':'相手')+'</td><td class="mv"><b>'+NAME[pt]+'</b>'+zf(f)+' → '+zf(t)+'</td><td class="rm">'+rm+'</td></tr>';
+  });
+  $('taRows').innerHTML=h;
+  card();showStep(0,true);
+ }
+ function showStep(k,silent){
+  const g=G.ts;if(!g||!g.answer)return;const A=g.answer,n=A.a.line.length;k=Math.max(0,Math.min(n,k));
+  const fwd=k>A.k;A.k=k;
+  G.s=A.states[k];G.stack=A.states.slice(0,k+1);G.lastEx=k?A.exs[k]:null;G.sel=-1;G.moves=[];G.hot=-1;G.busy=false;
+  if(k){const m=A.a.line[k-1],f=at(m[0],m[1]),t=at(m[2],m[3]),s0=A.states[k-1],pt=Math.abs(s0.b[f]);
+   showFormula((k-1)%2===0?'あなた':'相手',f,t,A.exs[k],pt);
+   if(fwd&&!silent){Snd.fx.move(pt,A.exs[k].tf.id);if(s0.b[t])Snd.fx.capture();}
+  }else{$('fmT').textContent='答えの手順を、「進む」で 1 手ずつ見られます';$('fmF').innerHTML='z′ = c + w(z − c)';}
+  document.querySelectorAll('#taRows tr').forEach(tr=>{const i=+tr.dataset.k;tr.classList.toggle('cur',i===k);tr.classList.toggle('fut',i>k);});
+  $('taPrev').disabled=k===0;$('taNext').disabled=k===n;
+  const msg=$('taMsg'),r=G.s.result;
+  msg.className=r?'good':'';
+  msg.textContent=r?'勝ち — '+(r.reason==='origin'?'原点制圧':r.reason==='mate'?'詰み':'手なし'):(k?(k%2?'相手の応手を見る':'あなたの次の手を見る'):'');
+  if(r&&fwd&&!silent)Snd.fx.win();
+  render();
+ }
+ function step(d){const g=G.ts;if(g&&g.answer)showStep(g.answer.k+d);}
+ function closeAnswer(){
+  const g=G.ts;if(!g||!g.answer)return;const sv=g.answer.saved;g.answer=null;
+  G.s=sv.s;G.stack=sv.stack;G.lastEx=sv.lastEx;G.sel=sv.sel;G.moves=sv.moves;G.hot=sv.hot;G.ro=sv.ro;
+  $('fmT').textContent='駒に触れると、跳べる点と変換が表示されます';$('fmF').innerHTML='z′ = c + w(z − c)';
+  card();render();
  }
 })();
 Ts.refresh();
@@ -1519,7 +1628,7 @@ refreshTitle();
 buildFaces();buildSky();buildTitle();buildBoard();
 start(E.newGame({seed:1,first:1}));
 G.busy=true;        // タイトルを閉じるまで盤は触れない
-window.__origo={G,E,P,play,Snd,Tut,TUT,Ts,TSUME,Resign};
+window.__origo={G,E,P,play,Snd,Tut,TUT,Ts,TSUME,TSUME_ANS,Resign};
 })();
 </script>
 </body>
