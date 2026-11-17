@@ -107,6 +107,46 @@ aside{display:flex;flex-direction:column;gap:12px}
 .orighot{fill:none;stroke-width:2.4;animation:pulse 1.15s ease-in-out infinite;pointer-events:none}
 @keyframes pulse{50%{opacity:.22}}
 
+/* チュートリアル: 光は既存の lux（軌跡・原点と同じ光）だけで描く */
+#tutCard{display:none;padding:11px 14px 10px;margin-bottom:10px}
+body.tut-on #tutCard{display:block}
+body.tut-on #status{display:none}
+.tc-head{display:flex;align-items:center;gap:10px}
+.tc-step{font-family:var(--serif);font-size:11.5px;letter-spacing:.28em;color:var(--brass)}
+.tc-step b{font-weight:400;color:var(--brass-hi)}
+.tc-dots{display:flex;gap:5px;flex:1}
+.tc-dots i{width:6px;height:6px;border-radius:50%;border:1px solid var(--hair2)}
+.tc-dots i.on{background:radial-gradient(circle at 35% 30%,#fff3c4,#d9b55e 60%,#8d651d);border-color:transparent}
+.tc-dots i.now{border-color:var(--lux);box-shadow:0 0 6px 1px rgba(255,233,176,.55)}
+.tc-quit{padding:3px 11px;font-size:11px}
+.tc-quit::before{display:none}
+.tc-title{font-family:var(--serif);font-size:16.5px;letter-spacing:.14em;color:var(--brass-hi);margin:7px 0 3px}
+.tc-text{font-size:13.5px;line-height:1.75;color:#ece5d2;min-height:3.5em}
+.tc-foot{display:flex;align-items:center;gap:10px;min-height:30px;margin-top:4px}
+#tutHint{flex:1;font-size:12px;color:var(--lux);letter-spacing:.05em;opacity:0;transition:opacity .25s}
+#tutHint.show{opacity:1}
+#tutNext{padding:6px 18px;font-size:12.5px;letter-spacing:.2em}
+body.tut-on #boardWrap{max-width:min(690px,calc(100dvh - 345px))}
+#formula.tut-glow{border-color:rgba(255,233,176,.65);box-shadow:inset 1px 1px 0 rgba(236,213,149,.1),0 0 18px rgba(255,233,176,.18)}
+.tutLit{fill:none;stroke:var(--lux);stroke-width:1.8;animation:pulse 1.4s ease-in-out infinite}
+.dst.tgt .tgtRing{fill:none;stroke:#fff3cf;stroke-width:1.8;animation:pulse 1.4s ease-in-out infinite}
+body.tut-on .dst:not(.tgt){opacity:.42}
+.tghost{fill:none;stroke:#d9bd7a;stroke-width:1.3;stroke-dasharray:3 5;opacity:.6;pointer-events:none}
+.tgone{stroke:#d9bd7a;stroke-width:1.3;opacity:.7;pointer-events:none}
+.tnew{fill:none;stroke:var(--lux);stroke-width:1.2;opacity:.85;pointer-events:none}
+.tut-entry{width:100%;margin-bottom:6px;padding:11px 12px;display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:linear-gradient(160deg,rgba(255,233,176,.07),rgba(255,233,176,.02));border-color:var(--brass)}
+.tut-entry b{font-family:var(--serif);font-weight:400;font-size:14px;letter-spacing:.3em;padding-left:.3em;color:var(--brass-hi)}
+.tut-entry small{font-size:10.5px;letter-spacing:.08em;color:var(--mute)}
+.tut-entry.done{border-color:var(--hair2);background:transparent}
+.tut-entry.done b{color:var(--text)}
+#mdTut .sheet{max-width:420px;text-align:center;padding-top:26px}
+#tutClearCoin svg{width:84px;height:84px}
+#mdTut h2{font-size:22px;letter-spacing:.3em;padding-left:.3em;margin-top:4px}
+.tut-sum{list-style:none;padding:0;margin:12px auto 0;text-align:left;max-width:320px}
+.tut-sum li{font-size:13px;line-height:1.7;padding:5px 0 5px 18px;border-top:1px solid var(--hair);position:relative}
+.tut-sum li::before{content:"";position:absolute;left:3px;top:13px;width:6px;height:6px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3c4,#d9b55e 60%,#8d651d)}
+
 /* タイトル・モーダル */
 .modal{position:fixed;inset:0;background:rgba(3,4,11,.74);display:none;align-items:center;justify-content:center;padding:16px;z-index:10;overflow:auto}
 .modal.show{display:flex}
@@ -164,7 +204,7 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
 #resSub{font-size:13.5px;color:var(--text)}
 
 @media (max-width:880px){
-  main{grid-template-columns:1fr;padding:2px 10px 22px;gap:14px}
+  main{grid-template-columns:minmax(0,1fr);padding:2px 10px 22px;gap:14px}
   header{padding:10px 12px 2px;gap:8px}
   h1{font-size:19px;letter-spacing:.28em}
   header .sub{display:none}
@@ -173,6 +213,10 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
   #boardWrap{max-width:min(100%,calc(100dvh - 190px));min-width:min(100%,300px)}
   #formula .f{font-size:16.5px}#formula .f small{font-size:12.5px;margin-left:8px}
   #status{font-size:12.5px;min-height:34px}
+  #tutCard{padding:9px 12px 8px;margin-bottom:8px}
+  .tc-text{font-size:13px;line-height:1.65}
+  .tc-title{font-size:15px;margin:5px 0 2px}
+  body.tut-on #boardWrap{max-width:min(100%,calc(100dvh - 230px))}
 }
 @media (prefers-reduced-motion:reduce){.orighot,.chkring{animation:none}}
 </style>
@@ -236,6 +280,12 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
 <main>
   <section>
     <div id="status"><span class="dot"></span><span id="stText"></span><span id="plyNo"></span></div>
+    <div id="tutCard" class="plate" aria-live="polite">
+      <div class="tc-head"><span class="tc-step">STEP <b id="tutNo">1</b> / 7</span><span class="tc-dots" id="tutDots"></span><button class="chip tc-quit" id="tutQuit">やめる</button></div>
+      <div class="tc-title" id="tutTitle"></div>
+      <div class="tc-text" id="tutText"></div>
+      <div class="tc-foot"><span id="tutHint"></span><button class="btn pri" id="tutNext" hidden>次へ</button></div>
+    </div>
     <div id="boardWrap">
       <svg id="boardBg" viewBox="0 0 760 760" aria-hidden="true"></svg>
       <svg id="board" viewBox="0 0 760 760" role="img" aria-label="盤面（複素数平面の格子点）"></svg>
@@ -273,6 +323,7 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
   <div class="tcoins" id="tCoins"></div>
   <div class="plaque"><i></i><i></i><i></i><i></i><b>PRISM</b><span>POLUS · ROTA · IMAGO · SPIRA · MAGNA</span></div>
   <div class="tsetup">
+    <button class="btn tut-entry" id="stTut"><b>チュートリアル</b><small>初めての方へ・7 ステップ</small></button>
     <div class="lab">CPU</div>
     <div class="opt" id="optLv"></div>
     <div class="lab">手番</div>
@@ -319,6 +370,18 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
   <textarea id="recIn" placeholder="ORIGO1. で始まるコードを貼り付け"></textarea>
   <p class="lead" id="recMsg"></p>
   <div class="row"><button class="btn" data-close>閉じる</button><button class="btn pri" id="recLoad">この局面から再開</button></div>
+</div></div>
+
+<div class="modal" id="mdTut"><div class="sheet">
+  <div id="tutClearCoin"></div>
+  <h2>チュートリアル完了</h2>
+  <p class="lead">原点制圧 — POLUS が原点 O で 1 手をしのぎました</p>
+  <ul class="tut-sum">
+    <li>駒は味方の駒を中心に、変換で跳ぶ</li>
+    <li>中心を動かすと、味方の行き先が変わる</li>
+    <li>相手の POLUS を詰めるか、原点を制すれば勝ち</li>
+  </ul>
+  <div class="row"><button class="btn" id="tutToTitle">タイトルへ</button><button class="btn pri" id="tutToGame">通常対局へ</button></div>
 </div></div>
 
 <div class="modal" id="mdRes"><div class="sheet">
@@ -714,7 +777,7 @@ function buildBoard(){
 }
 
 // ---------- 状態 ----------
-const G={s:null,stack:[],human:1,sel:-1,ro:false,moves:[],hot:-1,busy:false,lastEx:null};
+const G={s:null,stack:[],human:1,sel:-1,ro:false,moves:[],hot:-1,busy:false,lastEx:null,tut:null};
 const svg=$('board');
 const metal=side=>side===G.s.first?'au':'ag';   // 金＝先手、銀＝後手
 const fmt=(x,y)=>{
@@ -760,7 +823,7 @@ function render(skip){
  if(s.last&&G.lastEx)h+='<path class="last" d="'+pathD(s.last.from,s.last.to,G.lastEx)+'"/><circle class="lastdot" cx="'+px(X[s.last.from])+'" cy="'+py(Y[s.last.from])+'" r="6"/>';
  // 相手の利き
  const thr=new Uint8Array(NN),om=metal(-G.human);
- if(P.threat&&!s.result){const buf=new Int32Array(512),n=E.gen(b,-G.human,buf);for(let i=0;i<n;i++)thr[buf[i]%NN]=1;}
+ if(P.threat&&!s.result&&!G.tut){const buf=new Int32Array(512),n=E.gen(b,-G.human,buf);for(let i=0;i<n;i++)thr[buf[i]%NN]=1;}
  // 選択中の駒の作図（軌跡は光で描く）
  let cons='',dst='',hotEx=null;
  if(G.sel>=0){
@@ -768,11 +831,13 @@ function render(skip){
    const ex=E.explain(b,G.sel,to)[0],hot=to===G.hot,d=pathD(G.sel,to,ex);
    if(hot){hotEx=ex;cons+='<path class="consG" d="'+d+'"/>';}
    cons+='<path class="cons'+(G.ro?' ro':'')+(hot?' hot':'')+'" d="'+d+'"/>';
-   dst+='<g class="dst'+(G.ro?' ro':'')+'" data-to="'+to+'" transform="translate('+px(X[to])+','+py(Y[to])+')">'
+   const tg=G.tut&&Tut.isTarget(to);
+   dst+='<g class="dst'+(G.ro?' ro':'')+(tg?' tgt':'')+'" data-to="'+to+'" transform="translate('+px(X[to])+','+py(Y[to])+')">'+(tg?'<circle r="40" fill="url(#gLux)"/><circle class="tgtRing" r="'+(b[to]?47:19)+'"/>':'')
     +(b[to]?'<circle class="ringG" r="42"/><circle class="ring" r="42"/>':'<circle r="24" fill="url(#gLux)"/><circle class="core" r="5"/>')+'<circle class="hit" r="44"/></g>';
   }
  }
  if(hotEx)h+=overlay(G.sel,G.hot,hotEx);
+ if(G.tut)h+=Tut.marks();
  h+=cons;
  for(let p=0;p<NN;p++)if(thr[p]&&!b[p]){const x=px(X[p])+15,y=py(Y[p])-15;h+='<rect class="thr m-'+om+'" stroke="none" x="'+(x-2.8)+'" y="'+(y-2.8)+'" width="5.6" height="5.6" transform="rotate(45 '+x+' '+y+')"/>';}
  // 駒
@@ -781,6 +846,7 @@ function render(skip){
   let pre='';
   if(p===G.sel)pre+='<circle r="62" fill="url(#gLux)"/><circle class="selring" r="40.5"/>';
   if(p===chk)pre+='<circle r="64" fill="url(#gLux)"/><circle class="chkring" r="41.5"/>';
+  if(G.tut&&Tut.isLit(p))pre+='<circle r="66" fill="url(#gLux)"/><circle class="tutLit" r="47"/>';
   h+=pieceSvg(p,b[p],pre);
   if(thr[p]&&b[p]*G.human>0)h+='<circle class="thrR m-'+om+'" cx="'+px(X[p])+'" cy="'+py(Y[p])+'" r="41.5"/>';
  }
@@ -817,11 +883,13 @@ function renderSide(){
  st.className=cls;$('stText').textContent=txt;
  $('plyNo').textContent=(s.ply+1)+' 手目・CPU '+LV[P.level].name;
  // 取った駒（相手の金属）／取られた駒（自分の金属）
- const cnt={1:[0,0,2,1,1,1],'-1':[0,0,2,1,1,1]};
+ const cnt={1:[0,0,0,0,0,0],'-1':[0,0,0,0,0,0]},b0=G.stack[0].b;
+ for(let p=0;p<NN;p++)if(b0[p])cnt[Math.sign(b0[p])][Math.abs(b0[p])]++;
  for(let p=0;p<NN;p++)if(s.b[p])cnt[Math.sign(s.b[p])][Math.abs(s.b[p])]--;
  const lst=side=>{let r='';for(const t of PRISM)for(let k=0;k<cnt[side][t];k++)r+=coinSvg(metal(side),t);return r||'<span style="opacity:.5">—</span>';};
  $('capMe').innerHTML=lst(-G.human);$('capOp').innerHTML=lst(G.human);
- $('btUndo').disabled=G.busy||G.stack.length<2;
+ $('btUndo').disabled=G.busy||G.stack.length<2||!!G.tut;
+ $('btRec').disabled=!!G.tut;   // チュートリアルは棋譜コードの対象外
  const selT=G.sel>=0?Math.abs(s.b[G.sel]):0;
  document.querySelectorAll('.leg').forEach(el=>el.classList.toggle('on',+el.dataset.t===selT));
 }
@@ -848,6 +916,7 @@ function hit(e){
 }
 svg.addEventListener('click',e=>{
  Snd.init();
+ if(G.tut){Tut.click(hit(e));return;}
  if(G.busy)return;
  const el=hit(e),s=G.s;
  if(!el){if(G.sel>=0){Snd.fx.deselect();deselect();}return;}
@@ -883,9 +952,11 @@ function play(a){
  const dur=mover===G.human?(t===E.K?220:430):(t===E.K?420:760),t0=performance.now();
  const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;
  function fin(){
+  if(G.s!==s)return;             // 動きの途中で別の対局が始まった
   G.s=n;G.stack.push(n);G.lastEx=ex;G.busy=false;
   if(cap)Snd.fx.capture();
   render();
+  if(G.tut){Tut.after(n);return;}
   if(n.result){finish();return;}
   if(E.inCheck(n.b,n.turn))Snd.fx.check();
   if(n.turn!==G.human)cpu();
@@ -933,6 +1004,7 @@ function newGame(){
  start(E.newGame({seed,first}));
 }
 function start(s){
+ G.tut=null;document.body.classList.remove('tut-on');$('formula').classList.remove('tut-glow');
  G.s=s;G.stack=[s];G.sel=-1;G.moves=[];G.hot=-1;G.busy=false;G.lastEx=null;
  $('fmT').textContent='駒に触れると、跳べる点と変換が表示されます';$('fmF').innerHTML='z′ = c + w(z − c)';
  buildLegend();
@@ -953,7 +1025,7 @@ function undo(){
 // ---------- 画面部品 ----------
 function show(id){$(id).classList.add('show');if(id==='mdStart')document.body.classList.add('title-on');}
 function hide(id){$(id).classList.remove('show');if(id==='mdStart')document.body.classList.remove('title-on');}
-document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target.hasAttribute('data-close')||(e.target===m&&m.id!=='mdStart'))hide(m.id);}));
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target.hasAttribute('data-close')||(e.target===m&&m.id!=='mdStart'&&m.id!=='mdTut'))hide(m.id);}));
 function bindTog(id,key,after){
  const el=$(id);el.setAttribute('aria-pressed',P[key]);
  el.addEventListener('click',()=>{Snd.init();P[key]=!P[key];store.set(key,P[key]);el.setAttribute('aria-pressed',P[key]);after();});
@@ -969,6 +1041,11 @@ function bindOpt(id,key){
 bindOpt('optLv','level');bindOpt('optFirst','first');
 $('stGo').onclick=()=>{Snd.init();hide('mdStart');newGame();};
 $('stRules').onclick=()=>show('mdRules');
+$('stTut').onclick=()=>{Snd.init();hide('mdStart');Tut.start();};
+$('tutQuit').onclick=()=>{Snd.init();Tut.quit();};
+$('tutNext').onclick=()=>{Snd.init();Tut.next();};
+$('tutToGame').onclick=()=>{Snd.init();hide('mdTut');newGame();};
+$('tutToTitle').onclick=()=>{hide('mdTut');Tut.quit();};
 $('btRules').onclick=()=>show('mdRules');
 $('btNew').onclick=()=>{Snd.init();show('mdStart');};
 $('btUndo').onclick=()=>{Snd.init();undo();};
@@ -987,10 +1064,139 @@ $('recLoad').onclick=()=>{
  if(r.last)G.lastEx=E.explain(stack[stack.length-2].b,r.last.from,r.last.to)[0];
  render();
 };
+// ---------- チュートリアル（脚本付きの対局） ----------
+// 開始配置と全手は、エンジンの合法手生成で 1 手ずつ検証済み（sim/tutorial-check.js）。
+// 座標は [x, y]（複素数 x + yi）。駒種: K=POLUS R=ROTA M=IMAGO S=MAGNA P=SPIRA。+1 があなた（金）、−1 が相手（銀）。
+/*TUT-BEGIN*/
+const TUT={
+ setup:[['K',0,-3,1],['S',-2,-3,1],['P',2,-3,1],['R',1,-2,1],['K',0,3,-1],['M',2,2,-1],['R',2,3,-1]],
+ steps:['POLUS の一歩','ROTA の回転','SPIRA の大きな動き','取る','中心を動かすと、行き先が変わる','原点へ','原点制圧で勝ち'],
+ beats:[
+  {st:1,t:'move',f:[0,-3],to:[0,-2],text:'あなたの POLUS は、上下左右に 1 歩だけ動かせます。光っている POLUS に触れ、前の点へ進めてください。'},
+  {st:1,t:'cpu',m:[2,2,-2,2]},
+  {st:2,t:'move',f:[1,-2],to:[-3,0],text:'あなたは ROTA を、味方の駒を中心に 90° 回せます。MAGNA を中心に、光る点まで回してください。'},
+  {st:2,t:'note',text:'盤の下の式を見てください。あなたは中心 c = −2−3i から見た z − c に i を掛けました。i 倍は 90° の回転です。',glow:1},
+  {st:2,t:'cpu',m:[-2,2,-1,1]},
+  {st:3,t:'move',f:[2,-3],to:[2,1],text:'あなたは SPIRA を、45° 回しながら中心からの距離を √2 倍にできます。MAGNA を中心に、盤の奥まで跳ばしてください。'},
+  {st:3,t:'note',text:'z − c = 4 に 1 + i を掛けて 4 + 4i。あなたの SPIRA は 45° 回り、距離 4 を 4√2 に伸ばしました。',glow:1},
+  {st:3,t:'cpu',m:[2,3,1,-2]},
+  {st:4,t:'move',f:[-3,0],to:[1,-2],text:'相手の ROTA が攻め込んできました。あなたの ROTA を MAGNA のまわりに逆向きに回せば、取れます。'},
+  {st:4,t:'cpu',m:[-1,1,1,1]},
+  {st:5,t:'look',f:[1,-2],text:'ROTA に触れて、いまの行き先を確かめてください。'},
+  {st:5,t:'move',f:[-2,-3],to:[2,-1],text:'点線の輪が、いまの行き先です。次に、回転の中心だった MAGNA を動かします。MAGNA に触れ、光る点へ。'},
+  {st:5,t:'cpu',m:[0,3,0,2]},
+  {st:5,t:'look',f:[1,-2],cmp:1,text:'もう一度 ROTA に触れてください。行き先はどう変わったでしょうか。'},
+  {st:5,t:'move',f:[1,-2],to:[1,0],text:'あなたが MAGNA を動かしたので回転の中心が移り、−3 への道は消え、新しい点が生まれました。新しく生まれた光る点へ回してください。'},
+  {st:5,t:'cpu',m:[1,1,-1,1]},
+  {st:6,t:'move',f:[0,-2],to:[0,-1],text:'あなたの POLUS を原点 O へ運びます。まず 1 歩進めてください。'},
+  {st:6,t:'cpu',m:[-1,1,-1,3]},
+  {st:6,t:'move',f:[0,-1],to:[0,0],text:'POLUS を原点 O に入れてください。相手に狙われている点には入れません。'},
+  {st:7,t:'cpu',m:[0,2,0,3],wait:1500,text:'あなたの POLUS が原点に立ちました。相手の 1 手をしのげば、あなたの勝ちです。'}
+ ]
+};
+/*TUT-END*/
+const Tut=(function(){
+ const at=(x,y)=>E.idx(x,y),T={K:E.K,R:E.ROT,M:E.MIR,S:E.SCA,P:E.SPI};
+ let hintTimer=0;
+ const cur=()=>G.tut&&TUT.beats[G.tut.i];
+ function initial(){
+  const b=new Array(NN).fill(0);for(const [t,x,y,side] of TUT.setup)b[at(x,y)]=T[t]*side;
+  const s={b,turn:1,first:1,ply:0,seed:1,rep:{},result:null,last:null,log:[]};s.rep[E.key(b,1)]=1;
+  return s;
+ }
+ function hint(msg){
+  const el=$('tutHint');el.textContent=msg;el.classList.add('show');Snd.fx.deselect();
+  clearTimeout(hintTimer);hintTimer=setTimeout(()=>el.classList.remove('show'),1800);
+ }
+ function showCard(){
+  const b=cur(),st=b.st;
+  $('tutNo').textContent=st;$('tutTitle').textContent=TUT.steps[st-1];
+  if(b.text)$('tutText').textContent=b.text;
+  $('tutDots').innerHTML=TUT.steps.map((_,k)=>'<i class="'+(k+1<st?'on':k+1===st?'on now':'')+'"></i>').join('');
+  $('tutNext').hidden=b.t!=='note';
+  $('formula').classList.toggle('tut-glow',!!b.glow);
+  $('tutHint').classList.remove('show');
+ }
+ function go(){
+  showCard();render();
+  const b=cur();
+  if(b.t==='cpu'){
+   const me=G.tut,s=G.s;G.busy=true;
+   setTimeout(()=>{if(G.tut!==me||G.s!==s)return;G.busy=false;play({from:at(b.m[0],b.m[1]),to:at(b.m[2],b.m[3])});},b.wait||380);
+  }
+ }
+ function next(){G.tut.i++;go();}
+ return {
+  start(){
+   start(initial());
+   G.tut={i:0,old:null,cmp:null};document.body.classList.add('tut-on');
+   $('fmT').textContent='光っている駒に触れてください';$('fmF').innerHTML='z′ = c + w(z − c)';
+   go();
+  },
+  quit(){G.tut=null;document.body.classList.remove('tut-on');$('formula').classList.remove('tut-glow');G.busy=true;show('mdStart');},
+  next(){if(cur()&&cur().t==='note')next();},
+  // 盤の光: いま触れてよい駒
+  isLit(p){const b=cur();if(!b||G.busy||G.s.result)return false;
+   if(b.t==='look')return p===at(b.f[0],b.f[1])&&G.sel!==p;
+   if(b.t==='move')return p===at(b.f[0],b.f[1])&&G.sel!==p;
+   return false;},
+  isTarget(t){const b=cur();return !!b&&b.t==='move'&&G.sel===at(b.f[0],b.f[1])&&t===at(b.to[0],b.to[1]);},
+  // 第 5 ステップ: 中心を動かす前の行き先（点線の輪）と、動かした後の差
+  marks(){
+   const g=G.tut;if(!g.old||g.done5)return '';let h='';
+   const ring=(p,c)=>'<circle class="'+c+'" cx="'+px(X[p])+'" cy="'+py(Y[p])+'" r="21"/>';
+   if(!g.cmp){for(const p of g.old)h+=ring(p,'tghost');return h;}
+   for(const p of g.cmp.gone){const x=px(X[p]),y=py(Y[p]);h+=ring(p,'tghost')+'<path class="tgone" d="M'+(x-9)+' '+(y-9)+'L'+(x+9)+' '+(y+9)+'M'+(x+9)+' '+(y-9)+'L'+(x-9)+' '+(y+9)+'"/>';}
+   for(const p of g.cmp.fresh)h+='<circle class="tnew" cx="'+px(X[p])+'" cy="'+py(Y[p])+'" r="27"/>';
+   return h;
+  },
+  click(el){
+   const b=cur();if(!b)return;
+   if(G.busy){if(b.t==='cpu')hint('相手の番です');return;}
+   if(G.s.result)return;
+   if(b.t==='note'){hint('「次へ」で進みます');return;}
+   const f=at(b.f[0],b.f[1]);
+   if(el&&el.dataset.to!==undefined){
+    const t=+el.dataset.to;
+    if(b.t==='move'&&G.sel===f&&t===at(b.to[0],b.to[1])){play({from:f,to:t});return;}
+    hint(b.t==='move'&&G.sel===f?'光っている点へどうぞ':'光っている駒に触れてください');return;
+   }
+   if(el&&el.dataset.p!==undefined&&+el.dataset.p===f){
+    if(G.sel===f){if(b.t==='move')hint('光っている点へどうぞ');return;}
+    select(f);
+    if(b.t==='look'){
+     const now=G.moves.slice();
+     if(!b.cmp)G.tut.old=now;
+     else G.tut.cmp={gone:G.tut.old.filter(p=>now.indexOf(p)<0),fresh:now.filter(p=>G.tut.old.indexOf(p)<0)};
+     next();
+    }
+    return;
+   }
+   hint(b.t==='move'&&G.sel===f?'光っている点へどうぞ':'光っている駒に触れてください');
+  },
+  // 1 手指し終えたら（あなたでも相手でも）脚本を進める
+  after(n){
+   const b=cur();if(b&&b.st===5&&b.t==='move'&&G.tut.cmp)G.tut.done5=true;
+   if(n.result){
+    G.busy=true;showCard();
+    setTimeout(()=>{if(!G.tut)return;Snd.fx.win();store.set('tutDone',true);refreshTitle();
+     $('tutClearCoin').innerHTML=coinSvg('au',E.K);show('mdTut');},900);
+    return;
+   }
+   next();
+  }
+ };
+})();
+function refreshTitle(){
+ const done=store.get('tutDone',false),el=$('stTut');
+ el.classList.toggle('done',!!done);
+ el.innerHTML=done?'<b>もう一度チュートリアル</b><small>クリア済み・7 ステップ</small>':'<b>チュートリアル</b><small>初めての方へ・7 ステップ</small>';
+}
+refreshTitle();
 buildFaces();buildSky();buildTitle();buildBoard();
 start(E.newGame({seed:1,first:1}));
 G.busy=true;        // タイトルを閉じるまで盤は触れない
-window.__origo={G,E,P,play,Snd};
+window.__origo={G,E,P,play,Snd,Tut,TUT};
 })();
 </script>
 </body>
