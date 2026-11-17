@@ -74,6 +74,10 @@ aside{display:flex;flex-direction:column;gap:12px}
 .cap .row{display:flex;gap:1px;min-height:32px;align-items:center;margin-top:4px}
 .cap svg{width:31px;height:31px;margin-left:-4px}
 .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#btResign{grid-column:1/-1;color:var(--mute)}
+#btResign[hidden]{display:none}
+#mdResign .sheet{max-width:380px;text-align:center;padding-top:26px}
+#mdResign p{margin:8px 0 0}
 .btn{background:rgba(255,233,176,.03);border:1px solid var(--hair2);border-radius:8px;padding:9px 8px;font-size:12.5px;letter-spacing:.08em;color:var(--text)}
 .btn:hover{background:rgba(255,233,176,.08)}
 .btn:disabled{opacity:.35;cursor:default}
@@ -357,6 +361,7 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
         <button class="btn" id="btUndo">一手戻す</button>
         <button class="btn" id="btRules">ルール</button>
         <button class="btn" id="btRec">棋譜コード</button>
+        <button class="btn" id="btResign">投了</button>
       </div>
     </div>
   </aside>
@@ -415,6 +420,12 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
   <textarea id="recIn" placeholder="ORIGO1. で始まるコードを貼り付け"></textarea>
   <p class="lead" id="recMsg"></p>
   <div class="row"><button class="btn" data-close>閉じる</button><button class="btn pri" id="recLoad">この局面から再開</button></div>
+</div></div>
+
+<div class="modal" id="mdResign"><div class="sheet">
+  <h2>投了しますか？</h2>
+  <p>この対局は負けになります。</p>
+  <div class="row"><button class="btn" id="rsNo">続ける</button><button class="btn pri" id="rsYes">投了する</button></div>
 </div></div>
 
 <div class="modal" id="mdTsume"><div class="sheet">
@@ -828,6 +839,91 @@ function buildBoard(){
  $('boardBg').innerHTML=h;
 }
 
+// ---------- 投了（エンジンは変更しない。判定は思考の外側にある） ----------
+// CPU が投了するのは、上級（3 手読み）と達人（4 手読み）で、次の条件をすべて満たすときだけ。
+//   1. 自分の読みの中で、どの手を指しても負けが見えている（選んだ手の探索値が「負け確定」の域にある）
+//   2. そのうえで、厳密な探索（エンジンの合法手・同一局面規則そのまま）で、
+//      自分のどの手に対しても、相手が読みの範囲内（上級＝相手の 1 手、達人＝相手の 2 手以内）に
+//      詰み／原点制圧の勝ちを強制できると確かめられる
+// 形勢評価の数字だけでは投了しない。入門・標準では常に投了しない。
+// 棋譜コードの投了は、通常の棋譜コードの末尾に「.R」＋決め手（m=詰み / o=原点制圧 / x=両方 / -=プレイヤーの投了）を足す。
+// 末尾がなければ従来どおり（ORIGO1. の棋譜はそのまま読める）。
+/*RESIGN-BEGIN*/
+const Resign=(function(E){
+ const NN=E.NN,O=E.O,K=E.K,fr=m=>(m/NN)|0,to=m=>m%NN;
+ const ANY={mate:1,origin:1},MATE={mate:1},ORIGIN={origin:1};
+ const LOST=-90000;                           // エンジンの探索値で「負け確定」とみなす域（MATE = 100000）
+ let memo=new Map();
+ // M が指した直後の判定（E.apply と同じ順）。w は勝者、why は mate（詰み・手なし）か origin
+ function after(b,M,rep){
+  const k=E.key(b,-M);rep[k]=(rep[k]||0)+1;
+  if(b[O]===-M*K&&!E.attacked(b,O,M))return {k,w:-M,why:'origin'};
+  const ms=E.legal(b,-M,rep);
+  if(!ms.length)return {k,w:M,why:'mate'};
+  return {k,ms};
+ }
+ const unrep=(rep,k)=>{if(--rep[k]===0)delete rep[k];};
+ const mkey=(b,S,n,rep)=>E.key(b,S)+'|'+n+'|'+JSON.stringify(rep);
+ // S の番。S が自分の n 手以内に allow の勝ちを強制できるか
+ function win(b,S,n,rep,allow,ms){
+  const k=mkey(b,S,n,rep);if(memo.has(k))return memo.get(k);
+  let ok=false;
+  for(const m of ms||E.legal(b,S,rep)){
+   const f=fr(m),t=to(m),c=b[t];b[t]=b[f];b[f]=0;
+   const r=after(b,S,rep);
+   ok=r.w!==undefined?(r.w===S&&!!allow[r.why]):all(b,S,n,rep,allow,r.ms);
+   unrep(rep,r.k);b[f]=b[t];b[t]=c;
+   if(ok)break;
+  }
+  memo.set(k,ok);return ok;
+ }
+ // S の手のあと、相手のどの応手に対しても S が勝てるか
+ function all(b,S,n,rep,allow,replies){
+  for(const m of replies){
+   const f=fr(m),t=to(m),c=b[t];b[t]=b[f];b[f]=0;
+   const r=after(b,-S,rep);
+   const ok=r.w!==undefined?(r.w===S&&!!allow[r.why]):(n>1&&win(b,S,n-1,rep,allow,r.ms));
+   unrep(rep,r.k);b[f]=b[t];b[t]=c;
+   if(!ok)return false;
+  }
+  return true;
+ }
+ // s の手番の側が、どの手を指しても、相手が k 手以内に allow の勝ちを強制できるか
+ function lostAll(s,k,allow){
+  const b=s.b.slice(),S=s.turn,H=-S,rep=Object.assign({},s.rep);memo=new Map();
+  const ms=E.legal(b,S,rep);if(!ms.length)return false;
+  for(const m of ms){
+   const f=fr(m),t=to(m),c=b[t];b[t]=b[f];b[f]=0;
+   const r=after(b,S,rep);
+   const ok=r.w!==undefined?(r.w===H&&!!allow[r.why]):win(b,H,k,rep,allow,r.ms);
+   unrep(rep,r.k);b[f]=b[t];b[t]=c;
+   if(!ok)return false;
+  }
+  return true;
+ }
+ // CPU が投了するか。a は E.choose の結果（score を持つ）。戻り値は null か 'mate' / 'origin' / 'mixed'
+ function check(s,depth,a){
+  if(depth<3||!a||s.result)return null;
+  if(!(a.score<LOST))return null;
+  const k=depth>>1;
+  if(!lostAll(s,k,ANY))return null;
+  if(lostAll(s,k,MATE))return 'mate';
+  if(lostAll(s,k,ORIGIN))return 'origin';
+  return 'mixed';
+ }
+ function mark(s,by,why){return Object.assign({},s,{result:{winner:-by,reason:'resign',by,decisive:why||null}});}
+ const CODE={mate:'m',origin:'o',mixed:'x'},BACK={m:'mate',o:'origin',x:'mixed','-':null};
+ function encode(s){const r=s.result;return E.encode(s)+(r&&r.reason==='resign'?'.R'+(CODE[r.decisive]||'-'):'');}
+ function decode(str){
+  const t=String(str).trim(),m=/\.R([-mox])$/.exec(t);
+  if(!m)return E.decode(t);
+  const s=E.decode(t.slice(0,m.index));if(!s||s.result)return null;
+  return mark(s,s.turn,BACK[m[1]]);
+ }
+ return {check,lostAll,ANY,MATE,ORIGIN,mark,encode,decode};
+})(E);
+/*RESIGN-END*/
+
 // ---------- 状態 ----------
 const G={s:null,stack:[],human:1,sel:-1,ro:false,moves:[],hot:-1,busy:false,lastEx:null,tut:null,ts:null};
 const svg=$('board');
@@ -925,7 +1021,7 @@ function showFormula(title,from,to,ex,t){
 function renderSide(){
  const s=G.s,st=$('status');
  let txt='',cls=metal(s.turn);
- if(s.result){txt='対局終了';cls='';}
+ if(s.result){txt=s.result.reason==='resign'?(s.result.by===G.human?'あなたが投了しました':'CPU が投了しました'):'対局終了';cls='';}
  else if(s.turn===G.human){txt='あなたの番です';
   if(E.inCheck(s.b,s.turn)){txt='POLUS が狙われています。受けてください';cls+=' warn';}
   else if(s.b[E.O]===-G.human*E.K){txt='相手の POLUS が原点にいます。この 1 手で狙えなければ負けです';cls+=' warn';}
@@ -941,6 +1037,8 @@ function renderSide(){
  const lst=side=>{let r='';for(const t of PRISM)for(let k=0;k<cnt[side][t];k++)r+=coinSvg(metal(side),t);return r||'<span style="opacity:.5">—</span>';};
  $('capMe').innerHTML=lst(-G.human);$('capOp').innerHTML=lst(G.human);
  $('btUndo').disabled=G.busy||G.stack.length<2||!!G.tut||!!G.ts;
+ $('btResign').hidden=!!(G.tut||G.ts);   // チュートリアルと詰めORIGO には「やめる」がある
+ $('btResign').disabled=G.busy||!!s.result||s.turn!==G.human;
  $('btRec').disabled=!!G.tut||!!G.ts;   // チュートリアルと詰めORIGO は棋譜コードの対象外
  const selT=G.sel>=0?Math.abs(s.b[G.sel]):0;
  document.querySelectorAll('.leg').forEach(el=>el.classList.toggle('on',+el.dataset.t===selT));
@@ -1032,24 +1130,34 @@ function cpu(){
   const rand=E.rng((s.seed^Math.imul(s.ply+1,0x9E3779B1))>>>0);
   const lv=LV[P.level];
   const a=E.choose(s,{depth:lv.depth,margin:lv.margin,blunder:lv.blunder,rand});
+  const why=Resign.check(s,lv.depth,a);       // 上級・達人だけ。確実な負けのときだけ投了する
   G.busy=false;
+  if(why){resignGame(s.turn,why);return;}
   if(a)play(a);
  },380);
 }
-function finish(){
+function resignGame(by,why){
+ if(G.tut||G.ts||!G.s||G.s.result)return;
+ const n=Resign.mark(G.s,by,why);
+ G.stack.push(n);G.s=n;G.sel=-1;G.moves=[];G.hot=-1;G.busy=false;
+ render();finish();
+}
+function finish(replay){
  const r=G.s.result,st=store.get('stat',{});
  const k='L'+P.level;st[k]=st[k]||[0,0,0];
  let title;
  const why={mate:'詰み — POLUS の逃げ場がありません',origin:'原点制圧 — POLUS が原点 O で 1 手をしのぎました',stale:'手なし — 指せる手がありません',limit:'120 手で決着がつきませんでした'}[r.reason];
- if(r.winner===G.human){title='勝ち';st[k][0]++;Snd.fx.win();}
- else if(r.winner===0){title='引き分け';st[k][2]++;Snd.fx.draw();}
- else{title='負け';st[k][1]++;Snd.fx.lose();}
- store.set('stat',st);
+ if(r.winner===G.human){title='勝ち';if(!replay){st[k][0]++;Snd.fx.win();}}
+ else if(r.winner===0){title='引き分け';if(!replay){st[k][2]++;Snd.fx.draw();}}
+ else{title='負け';if(!replay){st[k][1]++;Snd.fx.lose();}}
+ if(!replay)store.set('stat',st);
  // 勝った側の POLUS を掲げる（引き分けは両方）
  $('resCoin').innerHTML=r.winner?coinSvg(metal(r.winner),E.K):coinSvg('au',E.K)+coinSvg('ag',E.K);
  $('resTitle').textContent=title;$('resTitle').className=r.winner&&metal(r.winner)==='ag'?'ag':'';
- $('resSub').textContent=why+'（'+G.s.ply+' 手）';
- $('resStat').textContent='CPU '+LV[P.level].name+' との通算　'+st[k][0]+' 勝 '+st[k][1]+' 敗'+(st[k][2]?' '+st[k][2]+' 分':'');
+ if(r.reason==='resign'){   // 「○○手で投了」。CPU の投了には決め手（詰み／原点制圧）を添える
+  $('resSub').textContent=G.s.ply+' 手で投了'+(r.by===G.human?'':'（CPU）— 決め手は '+({mate:'詰み',origin:'原点制圧',mixed:'詰みか原点制圧'}[r.decisive]||'詰み'));
+ }else $('resSub').textContent=why+'（'+G.s.ply+' 手）';
+ $('resStat').textContent=replay?'棋譜コードからの再生':'CPU '+LV[P.level].name+' との通算　'+st[k][0]+' 勝 '+st[k][1]+' 敗'+(st[k][2]?' '+st[k][2]+' 分':'');
  setTimeout(()=>show('mdRes'),700);
 }
 function newGame(){
@@ -1114,18 +1222,24 @@ $('btNew').onclick=()=>{Snd.init();show('mdStart');};
 $('btUndo').onclick=()=>{Snd.init();undo();};
 $('resNew').onclick=()=>{hide('mdRes');show('mdStart');};
 $('resView').onclick=()=>hide('mdRes');
-$('btRec').onclick=()=>{$('recOut').value=E.encode(G.s);$('recMsg').textContent='';show('mdRec');};
+$('btResign').onclick=()=>{Snd.init();if(G.busy||G.tut||G.ts||G.s.result||G.s.turn!==G.human)return;show('mdResign');$('rsNo').focus();};
+$('rsNo').onclick=()=>hide('mdResign');
+$('rsYes').onclick=()=>{hide('mdResign');if(!G.busy&&!G.tut&&!G.ts&&!G.s.result&&G.s.turn===G.human)resignGame(G.human,null);};
+$('btRec').onclick=()=>{$('recOut').value=Resign.encode(G.s);$('recMsg').textContent='';show('mdRec');};
 $('recCopy').onclick=()=>{const t=$('recOut');t.select();try{navigator.clipboard?navigator.clipboard.writeText(t.value):document.execCommand('copy');$('recMsg').textContent='コピーしました';}catch(e){}};
 $('recLoad').onclick=()=>{
  if(G.busy)return;
  // 手順を最初から適用し直して局面を復元する（決定的に再現できることの確認にもなる）
- let s=E.decode($('recIn').value);
+ let s=Resign.decode($('recIn').value);
  if(!s){$('recMsg').textContent='コードを読み取れませんでした';return;}
+ const resign=s.result&&s.result.reason==='resign'?s.result:null;
  const acts=s.log.slice();let r=E.newGame({seed:s.seed,first:s.first});const stack=[r];
  for(const m of acts){r=E.apply(r,{from:(m/NN)|0,to:m%NN});stack.push(r);}
  hide('mdRec');start(r);G.stack=stack;
  if(r.last)G.lastEx=E.explain(stack[stack.length-2].b,r.last.from,r.last.to)[0];
+ if(resign){const n=Resign.mark(r,resign.by,resign.decisive);stack.push(n);G.s=n;G.busy=false;}   // 投了で終わった対局の再生
  render();
+ if(resign)finish(true);
 };
 // ---------- チュートリアル（脚本付きの対局） ----------
 // 開始配置と全手は、エンジンの合法手生成で 1 手ずつ検証済み（sim/tutorial-check.js）。
@@ -1405,7 +1519,7 @@ refreshTitle();
 buildFaces();buildSky();buildTitle();buildBoard();
 start(E.newGame({seed:1,first:1}));
 G.busy=true;        // タイトルを閉じるまで盤は触れない
-window.__origo={G,E,P,play,Snd,Tut,TUT,Ts,TSUME};
+window.__origo={G,E,P,play,Snd,Tut,TUT,Ts,TSUME,Resign};
 })();
 </script>
 </body>
