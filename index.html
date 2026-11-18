@@ -142,6 +142,15 @@ body.pv-on .dst:not(.tgt){opacity:.42}
 #pvBar[hidden]{display:none}
 #pvText{flex:1 1 220px;font-size:12px;color:var(--mute);min-width:0;line-height:1.5}
 #pvBar .btn{padding:6px 14px;font-size:12px;letter-spacing:.1em}
+/* 変更 1: 行き先の対応（同じ駒・同じ変換）。既存の軌跡と同じ光の点線で、控えめに */
+.pvlink{fill:none;stroke:var(--lux);stroke-width:1.2;stroke-dasharray:2 5;stroke-linecap:round;opacity:.5;pointer-events:none}
+.pvlinkH{fill:none;stroke:var(--lux);stroke-width:1.2;stroke-linecap:round;opacity:.55;pointer-events:none}
+body.pv-pick .pvlink{opacity:.95;stroke-width:1.6}
+body.pv-pick .pvlinkH{opacity:.95}
+.pvpick{fill:none;stroke:var(--lux);stroke-width:1.5;stroke-dasharray:3 4;pointer-events:none}
+/* 変更 2: 長押しの途中で満ちていく輪 */
+.lpfill{fill:none;stroke:#fff3cf;stroke-width:2.2;stroke-linecap:round;pointer-events:none}
+.lpfillG{fill:none;stroke:var(--lux);stroke-width:9;opacity:.18;stroke-linecap:round;pointer-events:none}
 .tghost{fill:none;stroke:#d9bd7a;stroke-width:1.3;stroke-dasharray:3 5;opacity:.6;pointer-events:none}
 .tgone{stroke:#d9bd7a;stroke-width:1.3;opacity:.7;pointer-events:none}
 .tnew{fill:none;stroke:var(--lux);stroke-width:1.2;opacity:.85;pointer-events:none}
@@ -244,6 +253,10 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
   background:linear-gradient(152deg,#efd898 0%,#cfab60 22%,#a8843f 55%,#86662b 82%,#6e5220 100%);
   box-shadow:inset 1.2px 1.2px 0 rgba(255,247,216,.75),inset -1.2px -1.2px 0 rgba(48,32,5,.6),inset 0 0 0 5px rgba(0,0,0,0),6px 9px 18px rgba(0,0,0,.55)}
 .plaque::before{content:"";position:absolute;inset:5px;border-radius:2px;border:1px solid rgba(58,40,8,.45);box-shadow:.8px .8px 0 rgba(255,244,205,.4)}
+.plaque.ans-on{box-shadow:inset 1.2px 1.2px 0 rgba(255,247,216,.75),inset -1.2px -1.2px 0 rgba(48,32,5,.6),6px 9px 18px rgba(0,0,0,.55),0 0 22px rgba(255,233,176,.28)}
+.tcoins figure{transition:filter .25s}
+.tcoins figure.tap-glow{filter:drop-shadow(0 0 7px rgba(255,233,176,.55))}
+.ts-whisper{text-align:right;font-family:var(--serif);font-size:10.5px;letter-spacing:.18em;color:var(--mute);opacity:.6;margin:10px 2px -6px}
 .plaque b{display:block;font-family:var(--serif);font-weight:400;font-size:21px;letter-spacing:.5em;padding-left:.5em;color:#3a2707;text-shadow:.8px .9px 0 rgba(255,244,205,.6)}
 .plaque span{display:block;font-family:var(--serif);font-size:9.5px;letter-spacing:.24em;color:#4a340c;margin-top:3px;text-shadow:.6px .7px 0 rgba(255,244,205,.5)}
 .plaque i{position:absolute;width:6px;height:6px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f6e3aa,#8a6a2c 55%,#3d2c0e);box-shadow:.8px 1px 1px rgba(40,26,4,.7)}
@@ -469,6 +482,7 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
   <p class="lead">「あと ○ 手」は自分の手の回数です。原点制圧は、原点に入って相手の応手をしのいだ時点で成立します。相手は勝ちを避ける応手を選びます。光る枠が今日の詰め、金の点は解いた問題、細い輪は答えを見た問題です。</p>
   <div id="tsSections"></div>
   <div class="row"><button class="btn" id="tsClose">タイトルへ</button></div>
+  <p class="ts-whisper">答えは PRISM の順に眠る</p>
 </div></div>
 
 <div class="modal" id="mdTut"><div class="sheet">
@@ -825,7 +839,7 @@ function buildTitle(){
  h+='<line x1="212" y1="338" x2="348" y2="338" stroke="#c9a45a" stroke-opacity=".45" stroke-width=".8"/>';
  h+='<text x="'+(c+6)+'" y="368" text-anchor="middle" font-size="15.5" letter-spacing="12" fill="#cdb884" style="font-family:var(--serif)">複素数平面の変換対局</text>';
  $('tRing').innerHTML=h;
- $('tCoins').innerHTML=PRISM.map(t=>'<figure>'+coinSvg('au',t)+'<figcaption>'+NAME[t]+'</figcaption></figure>').join('');
+ $('tCoins').innerHTML=PRISM.map(t=>'<figure data-t="'+t+'">'+coinSvg('au',t)+'<figcaption>'+NAME[t]+'</figcaption></figure>').join('');
 }
 // 盤の静的レイヤ: 真鍮の縁・留め具・藍のマットな地・目盛り環・格子・玉座
 const px=x=>380+x*90, py=y=>380-y*90;
@@ -987,6 +1001,35 @@ const Preview=(function(E){
 })(E);
 /*PREVIEW-END*/
 
+// ---------- プレビューの対応づけ ----------
+// 中心が c から c′ に移るとき、味方の駒 z の行き先は「同じ駒・同じ変換 w」どうしで対応する:
+//   c + w(z − c)  →  c′ + w(z − c′)
+// 指す前に合法な行き先で、指したあとにも同じ駒・同じ変換の行き先が合法なら、その 2 点を結ぶ。
+// 戻り値: [{piece, w, from, to}]（from が元の点、to が新しい点）
+/*PVLINK-BEGIN*/
+const PvLink=(function(E){
+ const NN=E.NN;
+ function pairs(s,f,t){
+  const S=s.turn,n=E.apply(s,{from:f,to:t});if(!n)return [];
+  const before=new Set(E.legal(s.b,S,s.rep)),after=new Set(E.legal(n.b,S,n.rep)),out=[];
+  for(let a=0;a<NN;a++){
+   const v=s.b[a]*S;if(a===f||v<=1)continue;        // 味方の駒で、動かす駒と POLUS 以外
+   for(const tf of E.TF[v]){
+    const r1=tf.f(E.X[a]-E.X[f],E.Y[a]-E.Y[f]),r2=tf.f(E.X[a]-E.X[t],E.Y[a]-E.Y[t]);
+    if(!r1||!r2)continue;
+    const x1=E.X[f]+r1[0],y1=E.Y[f]+r1[1],x2=E.X[t]+r2[0],y2=E.Y[t]+r2[1];
+    if(!E.inb(x1,y1)||!E.inb(x2,y2))continue;
+    const p1=E.idx(x1,y1),p2=E.idx(x2,y2);
+    if(p1===p2||!before.has(a*NN+p1)||!after.has(a*NN+p2))continue;
+    out.push({piece:a,w:tf.id,from:p1,to:p2});
+   }
+  }
+  return out;
+ }
+ return {pairs};
+})(E);
+/*PVLINK-END*/
+
 // ---------- 状態 ----------
 const G={s:null,stack:[],human:1,sel:-1,ro:false,moves:[],hot:-1,busy:false,lastEx:null,tut:null,ts:null,pv:null};
 const svg=$('board');
@@ -1142,7 +1185,8 @@ svg.addEventListener('click',e=>{
  if(G.pv){                                  // プレビュー中: 同じ行き先でもう一度タップ＝確定、ほかの場所＝取り消し
   if(el&&el.dataset.to!==undefined&&+el.dataset.to===G.pv.to){pvCommit();return;}
   const p=el&&el.dataset.p!==undefined?+el.dataset.p:-1;
-  pvCancel();if(p>=0&&p!==G.sel)select(p);
+  if(p>=0&&p!==G.sel&&s.b[p]*G.human>0){pvPick(p);return;}   // 味方の駒: その駒の対応だけに絞る／戻す／切り替える
+  pvCancel();
   return;
  }
  if(!el){if(G.sel>=0){Snd.fx.deselect();deselect();}return;}
@@ -1156,14 +1200,28 @@ svg.addEventListener('click',e=>{
 });
 // ---- 行き先の長押し（通常対局だけ）: 対象の手ならプレビューを開く。対象でない手では何もしない（駒の選択は保つ）
 const LP={ms:450,tol:10,timer:0,eat:false,x:0,y:0};
-function lpClear(){clearTimeout(LP.timer);LP.timer=0;}
+function lpClear(){clearTimeout(LP.timer);clearTimeout(LP.show);LP.timer=0;LP.show=0;lpRing(-1);}
+// 満ちる輪: 押してから少し待って見せ始め（ふつうのタップでちらつかないように）、450ms ちょうどで満ちる
+const LP_R=30,LP_C=2*Math.PI*LP_R,LP_DELAY=110;
+function lpRing(to,ms){
+ const old=document.getElementById('lpRing');if(old)old.remove();
+ if(to<0)return;
+ const g=document.createElementNS('http://www.w3.org/2000/svg','g');g.id='lpRing';
+ g.setAttribute('transform','translate('+px(X[to])+','+py(Y[to])+') rotate(-90)');
+ const start=LP_C*(1-LP_DELAY/LP.ms);
+ g.innerHTML='<circle class="lpfillG" r="'+LP_R+'" stroke-dasharray="'+LP_C.toFixed(1)+'" stroke-dashoffset="'+start.toFixed(1)+'"/><circle class="lpfill" r="'+LP_R+'" stroke-dasharray="'+LP_C.toFixed(1)+'" stroke-dashoffset="'+start.toFixed(1)+'"/>';
+ svg.appendChild(g);
+ const cs=g.querySelectorAll('circle');
+ requestAnimationFrame(()=>requestAnimationFrame(()=>cs.forEach(c=>{c.style.transition='stroke-dashoffset '+ms+'ms linear';c.style.strokeDashoffset='0';})));
+}
 svg.addEventListener('pointerdown',e=>{
  LP.eat=false;lpClear();
  if(e.button>0||G.busy||G.tut||G.ts||G.pv||G.sel<0||G.ro)return;
  const el=hit(e);if(!el||el.dataset.to===undefined)return;
  const to=+el.dataset.to,s=G.s,sel=G.sel;LP.x=e.clientX;LP.y=e.clientY;
+ LP.show=setTimeout(()=>{LP.show=0;lpRing(to,LP.ms-LP_DELAY);},LP_DELAY);
  LP.timer=setTimeout(()=>{
-  LP.timer=0;
+  LP.timer=0;lpRing(-1);
   if(G.s!==s||G.sel!==sel||G.busy||G.pv||G.tut||G.ts)return;
   LP.eat=true;                               // このあとのタップ（指を離したとき）は確定に使わない
   const pv=Preview.analyze(s,sel,to);if(pv){Snd.init();pvOpen(pv);}
@@ -1184,6 +1242,15 @@ svg.addEventListener('pointermove',e=>{
 // ---------- 中心を動かす手のプレビュー（表示）。チュートリアル第 5 ステップと同じ印: 光の輪＝新しい行き先、点線の輪と ×＝消える行き先 ----------
 function pvMarks(){
  const g=G.pv,b=G.s.b;let h='';
+ // 対応の線（絞り込み中はその駒の線だけ）。終点に小さな矢じり
+ for(const k of g.links){
+  if(g.pick>=0&&k.piece!==g.pick)continue;
+  const x1=px(X[k.from]),y1=py(Y[k.from]),x2=px(X[k.to]),y2=py(Y[k.to]),L=Math.hypot(x2-x1,y2-y1);if(L<1)continue;
+  const ux=(x2-x1)/L,uy=(y2-y1)/L,ex=x2-ux*14,ey=y2-uy*14;
+  h+='<line class="pvlink" x1="'+(x1+ux*8).toFixed(1)+'" y1="'+(y1+uy*8).toFixed(1)+'" x2="'+ex.toFixed(1)+'" y2="'+ey.toFixed(1)+'"/>';
+  h+='<path class="pvlinkH" d="M'+(ex-ux*7-uy*4.5).toFixed(1)+' '+(ey-uy*7+ux*4.5).toFixed(1)+'L'+ex.toFixed(1)+' '+ey.toFixed(1)+'L'+(ex-ux*7+uy*4.5).toFixed(1)+' '+(ey-uy*7-ux*4.5).toFixed(1)+'"/>';
+ }
+ if(g.pick>=0)h+='<circle class="pvpick" cx="'+px(X[g.pick])+'" cy="'+py(Y[g.pick])+'" r="44"/>';
  for(const p of g.same){const x=px(X[p]),y=py(Y[p]);h+=b[p]?'<circle class="pvsameR" cx="'+x+'" cy="'+y+'" r="44"/>':'<circle class="pvsame" cx="'+x+'" cy="'+y+'" r="4.5"/>';}
  for(const p of g.gone){const x=px(X[p]),y=py(Y[p]),r=b[p]?44:21;
   h+='<circle class="tghost" cx="'+x+'" cy="'+y+'" r="'+r+'"/><path class="tgone" d="M'+(x-9)+' '+(y-9)+'L'+(x+9)+' '+(y+9)+'M'+(x+9)+' '+(y-9)+'L'+(x-9)+' '+(y+9)+'"/>';}
@@ -1192,13 +1259,20 @@ function pvMarks(){
 }
 function pvOpen(pv){
  const s=G.s,ex=E.explain(s.b,pv.from,pv.to)[0];
- G.pv=Object.assign(pv,{s});G.hot=pv.to;
+ G.pv=Object.assign(pv,{s,links:PvLink.pairs(s,pv.from,pv.to),pick:-1});G.hot=pv.to;
  showFormula('確認',pv.from,pv.to,ex,Math.abs(s.b[pv.from]));
  $('fmT').textContent+=' — この手で、味方の行き先が変わります';
- $('pvText').textContent='光の輪＝新しく行ける点 '+pv.fresh.length+'・×＝行けなくなる点 '+pv.gone.length+'（薄い点は変わらない）';
+ pvText();
  Snd.fx.select();render();
 }
-function pvDrop(){G.pv=null;document.body.classList.remove('pv-on');$('pvBar').hidden=true;}
+function pvText(){
+ const g=G.pv;let t='光＝新しい点 '+g.fresh.length+'・×＝消える点 '+g.gone.length+'・線＝同じ駒・同じ変換の行き先の移り '+g.links.length+'（薄い点は変わらない）';
+ if(g.pick>=0){const n=g.links.filter(k=>k.piece===g.pick).length;t=NAME[Math.abs(G.s.b[g.pick])]+' '+zf(g.pick)+' の線だけ：'+n+' 本（もう一度タップで全部）';}
+ else if(g.links.length)t+='。味方の駒をタップで、その駒の線だけ';
+ $('pvText').textContent=t;
+}
+function pvPick(p){const g=G.pv;g.pick=g.pick===p?-1:p;document.body.classList.toggle('pv-pick',g.pick>=0);Snd.fx.select();pvText();render();}
+function pvDrop(){G.pv=null;document.body.classList.remove('pv-on');document.body.classList.remove('pv-pick');$('pvBar').hidden=true;}
 function pvCommit(){const a={from:G.pv.from,to:G.pv.to};pvDrop();play(a);}
 function pvCancel(){
  pvDrop();G.hot=-1;Snd.fx.deselect();
@@ -1326,6 +1400,17 @@ $('stTut').onclick=()=>{Snd.init();hide('mdStart');Tut.start();};
 $('stTsume').onclick=()=>{Snd.init();Ts.list();};
 $('stToday').onclick=()=>{Snd.init();hide('mdStart');Ts.start(Ts.today());};
 $('tsClose').onclick=()=>{hide('mdTsume');show('mdStart');};
+// ---- 答えモード: タイトルの五駒を PRISM の順（POLUS → ROTA → IMAGO → SPIRA → MAGNA）にタップすると入る／切れる
+const AnsKey={k:0};
+function ansMark(){$('mdStart').querySelector('.plaque').classList.toggle('ans-on',!!store.get('ansMode',false));}
+$('tCoins').addEventListener('click',e=>{
+ const fg=e.target.closest('figure');if(!fg)return;
+ const t=+fg.dataset.t;
+ if(t===PRISM[AnsKey.k]){
+  AnsKey.k++;fg.classList.add('tap-glow');setTimeout(()=>fg.classList.remove('tap-glow'),380);
+  if(AnsKey.k===PRISM.length){AnsKey.k=0;store.set('ansMode',!store.get('ansMode',false));ansMark();}
+ }else AnsKey.k=t===PRISM[0]?1:0;          // 間違えたら数え直し（いま押したのが POLUS なら、そこから 1 つ目）
+});
 $('tsHint').onclick=()=>{Snd.init();Ts.hint();};
 $('tsList').onclick=()=>{Snd.init();Ts.list();};
 $('tsQuit').onclick=()=>{Snd.init();Ts.quit();};
@@ -1605,6 +1690,7 @@ const Ts=(function(){
   msg.textContent=g.state==='fail'?'この手では勝てません':g.state==='clear'?g.clearText:(g.used?'残り '+(q.n-g.used)+' 手':'');
   $('tsNext').hidden=g.state!=='clear';
   $('tsMain').hidden=!!g.answer;$('tsAns').hidden=!g.answer;$('tsAnswer').disabled=G.busy;
+  $('tsAnswer').hidden=!store.get('ansMode',false);   // 答えモード（タイトルで PRISM の順に駒をタップ）のときだけ
  }
  function begin(i){
   start(initial(TSUME[i]));
@@ -1641,7 +1727,7 @@ const Ts=(function(){
   // 検証用: いまの局面で残り手数以内に勝てる手を 1 つ返す
   winningMove(){const g=G.ts,rem=TSUME[g.i].n-g.used;memo=new Map();const b=G.s.b.slice(),rep=Object.assign({},G.s.rep);for(const m of E.legal(b,1,rep))if(mv(b,1,rem,rep,m))return {from:fr(m),to:to(m)};return null;},
   blocked(){const g=G.ts;if(g.answer){$('taMsg').textContent='答えの表示中です。「閉じる」で問題に戻れます';return;}const m=$('tsMsg');m.classList.add('bad');m.textContent=g.state==='fail'?'「最初から」でやり直せます':'解けました。「次の問題」へどうぞ';},
-  answer(){openAnswer();},closeAnswer(){closeAnswer();},step(d){step(d);},jump(k){showStep(k);},
+  answer(){if(store.get('ansMode',false))openAnswer();},closeAnswer(){closeAnswer();},step(d){step(d);},jump(k){showStep(k);},
   after(n){
    const g=G.ts,q=TSUME[g.i];
    if(n.turn===-1){                         // あなたが指した直後
@@ -1719,7 +1805,8 @@ refreshTitle();
 buildFaces();buildSky();buildTitle();buildBoard();
 start(E.newGame({seed:1,first:1}));
 G.busy=true;        // タイトルを閉じるまで盤は触れない
-window.__origo={G,E,P,play,Snd,Tut,TUT,Ts,TSUME,TSUME_ANS,Resign,Preview};
+window.__origo={G,E,P,play,Snd,Tut,TUT,Ts,TSUME,TSUME_ANS,Resign,Preview,PvLink};
+ansMark();
 })();
 </script>
 </body>
