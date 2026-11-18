@@ -48,7 +48,7 @@ main{width:100%;max-width:1080px;display:grid;grid-template-columns:minmax(0,1fr
 
 #boardWrap{position:relative;width:100%;max-width:min(690px,calc(100dvh - 205px));margin:0 auto;filter:drop-shadow(7px 12px 20px rgba(0,0,0,.62))}
 #boardBg{display:block;width:100%;height:auto}
-#board{position:absolute;inset:0;width:100%;height:100%;touch-action:manipulation;user-select:none;-webkit-user-select:none;overflow:visible}
+#board{position:absolute;inset:0;width:100%;height:100%;touch-action:manipulation;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;overflow:visible}
 
 .plate{background:linear-gradient(160deg,rgba(22,31,74,.82),rgba(9,13,36,.86));border:1px solid var(--hair);border-radius:10px;
   box-shadow:inset 1px 1px 0 rgba(236,213,149,.07),3px 5px 14px rgba(0,0,0,.35)}
@@ -440,6 +440,7 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
   <h3>読みのコツ</h3>
   <ul>
     <li>駒を 1 つ動かすと、それを中心にしていた味方すべての行き先が変わります。</li>
+    <li>行き先を長押しすると、味方の行き先がどう変わるかを先に確かめられます。</li>
     <li>相手の攻め駒が取れなくても、<b>中心になっている駒</b>を取れば攻めは消えます。</li>
     <li>相手の駒に触れると、その駒が次に跳べる点を確認できます。</li>
   </ul>
@@ -1133,6 +1134,7 @@ function hit(e){
 }
 svg.addEventListener('click',e=>{
  Snd.init();
+ if(LP.eat){LP.eat=false;return;}            // 長押しが成立したタップは、離しても手を確定しない
  if(G.tut){Tut.click(hit(e));return;}
  if(G.ts&&!Ts.canPlay()){Ts.blocked();return;}
  if(G.busy)return;
@@ -1147,12 +1149,29 @@ svg.addEventListener('click',e=>{
  if(el.dataset.to!==undefined){
   const to=+el.dataset.to;
   if(G.ro){ if(s.b[to])select(to); return; }
-  if(!G.tut&&!G.ts){const pv=Preview.analyze(s,G.sel,to);if(pv){pvOpen(pv);return;}}   // 通常対局だけ
   play({from:G.sel,to});return;
  }
  const p=+el.dataset.p;
  if(p===G.sel){Snd.fx.deselect();deselect();}else select(p);
 });
+// ---- 行き先の長押し（通常対局だけ）: 対象の手ならプレビューを開く。対象でない手では何もしない（駒の選択は保つ）
+const LP={ms:450,tol:10,timer:0,eat:false,x:0,y:0};
+function lpClear(){clearTimeout(LP.timer);LP.timer=0;}
+svg.addEventListener('pointerdown',e=>{
+ LP.eat=false;lpClear();
+ if(e.button>0||G.busy||G.tut||G.ts||G.pv||G.sel<0||G.ro)return;
+ const el=hit(e);if(!el||el.dataset.to===undefined)return;
+ const to=+el.dataset.to,s=G.s,sel=G.sel;LP.x=e.clientX;LP.y=e.clientY;
+ LP.timer=setTimeout(()=>{
+  LP.timer=0;
+  if(G.s!==s||G.sel!==sel||G.busy||G.pv||G.tut||G.ts)return;
+  LP.eat=true;                               // このあとのタップ（指を離したとき）は確定に使わない
+  const pv=Preview.analyze(s,sel,to);if(pv){Snd.init();pvOpen(pv);}
+ },LP.ms);
+});
+svg.addEventListener('pointermove',e=>{if(LP.timer&&Math.hypot(e.clientX-LP.x,e.clientY-LP.y)>LP.tol)lpClear();});
+['pointerup','pointercancel','pointerleave'].forEach(t=>svg.addEventListener(t,lpClear));
+svg.addEventListener('contextmenu',e=>{if(!G.tut&&!G.ts)e.preventDefault();});   // 長押しでメニューが出ないように
 svg.addEventListener('pointermove',e=>{
  if(G.busy||G.sel<0||G.pv||e.pointerType==='touch')return;
  const el=hit(e);const to=el&&el.dataset.to!==undefined?+el.dataset.to:-1;
