@@ -164,6 +164,19 @@ body.pv-pick .pvlinkH{opacity:.95}
 
 /* 詰めORIGO */
 #tsCard{display:none;padding:11px 14px 10px;margin-bottom:10px}
+#rvCard{display:none;padding:11px 14px 10px;margin-bottom:10px}
+body.rv-on #rvCard{display:block}
+body.rv-on #status{display:none}
+#rvCard .tc-step{white-space:nowrap}
+#rvCard .tc-foot{flex-wrap:wrap}
+#rvMsg{flex:1;font-size:12.5px;color:var(--mute);min-width:0}
+.rv-tabs{display:flex;gap:6px}
+.rv-tabs .btn{padding:6px 12px;font-size:12px;letter-spacing:.08em}
+.rv-tabs .btn[aria-pressed="true"]{border-color:var(--brass);color:var(--brass-hi);background:rgba(255,233,176,.08)}
+.rv-tabs[hidden]{display:none}
+#rvText b{color:var(--gold);font-weight:600}
+#resReviewRow{margin-top:14px}#resReviewRow[hidden]{display:none}
+#resReviewRow .btn{flex:1}
 body.ts-on #tsCard{display:block}
 body.ts-on #status{display:none}
 body.ts-on #boardWrap{max-width:min(690px,calc(100dvh - 330px))}
@@ -375,6 +388,12 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
 <main>
   <section>
     <div id="status"><span class="dot"></span><span id="stText"></span><span id="plyNo"></span></div>
+    <div id="rvCard" class="plate" aria-live="polite">
+      <div class="tc-head"><span class="tc-step">ふりかえり</span><span class="ts-tools"><button class="chip" id="rvClose">閉じる</button></span></div>
+      <div class="tc-title" id="rvTitle"></div>
+      <div class="tc-text" id="rvText"></div>
+      <div class="tc-foot"><span id="rvMsg"></span><span class="rv-tabs" id="rvTabs" hidden><button class="btn" id="rvMine" aria-pressed="true">あなたの手</button><button class="btn" id="rvAlt" aria-pressed="false">よかった手</button></span></div>
+    </div>
     <div id="tsCard" class="plate" aria-live="polite">
       <div id="tsMain">
       <div class="tc-head"><span class="tc-step">詰めORIGO　第 <b id="tsNo">1</b> 問</span><span class="ts-tools"><button class="chip" id="tsHint" aria-pressed="false">ヒント</button><button class="chip" id="tsList">一覧</button><button class="chip" id="tsQuit">やめる</button></span></div>
@@ -517,6 +536,7 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
   <h2 id="resTitle"></h2>
   <p id="resSub"></p>
   <p class="lead" id="resStat"></p>
+  <div class="row" id="resReviewRow" hidden><button class="btn" id="resReview">ふりかえり</button></div>
   <div class="row"><button class="btn" id="resView">盤面を見る</button><button class="btn pri" id="resNew">もう一局</button></div>
 </div></div>
 
@@ -1046,8 +1066,116 @@ const PvLink=(function(E){
 })(E);
 /*PVLINK-END*/
 
+// ---------- ふりかえり（対局後の解析。CPU の思考とは別。エンジンは変更しない） ----------
+// 形勢: 各局面を固定の読み（E.choose の探索値。2 手読みと 3 手読みの平均）で測り、あなたの側から見た値 v にする。終局は ±BIG。
+//   深さを一つだけにすると「最後に指す側が駒を取って終わる」偏りで、手番ごとに値がのこぎり状に揺れる（偶数と奇数で逆向き）。
+//   2 手読みと 3 手読みを平均してこの偏りを打ち消す。どちらかの読みで勝ち負けが見えたら（|値| ≥ 90000）、その値を使う。
+//   v ≥ +T を「有利」、v ≤ −T を「不利」、その間を「互角」とする。
+// 決め手（分岐点）: あなたの手のうち、手の前の形勢が勝敗の側でなく、手のあとの形勢が勝敗の側（勝ち→有利、負け→不利）で、
+//   以後終局まで一度も勝敗の側から外れない最初の手。
+// 分岐点がない対局: 勝敗の向きへの形勢の動き（勝ち: v の増え、負け: v の減り）が最も大きかったあなたの手。同じなら早い手。
+// 負けのときの代替手: 決め手の局面で、あなたの各合法手のあとの v（同じ測り方）が最大の手（同じなら合法手の並び順で先）。
+//   実際の手より厳密に良いときだけ示す。
+/*REVIEW-BEGIN*/
+const Review=(function(E){
+ const NN=E.NN,O=E.O,K=E.K,fr=m=>(m/NN)|0,to=m=>m%NN;
+ const D=[2,3],T=150,BIG=100000;
+ const cls=v=>v>=T?1:v<=-T?-1:0;                 // 1 有利 / 0 互角 / −1 不利
+ const termV=(r,H)=>r.winner===H?BIG:r.winner===-H?-BIG:0;
+ // 局面 s の、H の側から見た形勢
+ function value(s,H){
+  if(s.result)return termV(s.result,H);
+  const sc=D.map(d=>{const a=E.choose(s,{depth:d,margin:0,rand:E.rng(1)});return a?(s.turn===H?a.score:-a.score):0;});
+  const big=sc.filter(x=>Math.abs(x)>=90000);
+  if(big.length)return big.reduce((x,y)=>Math.abs(y)>Math.abs(x)?y:x);
+  return sc.reduce((x,y)=>x+y,0)/sc.length;
+ }
+ // 棋譜（種・手番・手順・結果）から解析の準備をする。結果が勝ち負けでなければ null
+ function prepare(game,H){
+  const states=[E.newGame({seed:game.seed,first:game.first})];
+  for(const m of game.log){const n=E.apply(states[states.length-1],{from:fr(m),to:to(m)});if(!n)return null;states.push(n);}
+  const res=game.result||states[states.length-1].result;
+  if(!res||!res.winner)return null;
+  return {H,states,res,outcome:res.winner===H?1:-1,v:[],alt:null,altV:[],altMoves:null,i:0,done:false};
+ }
+ // 1 局面ずつ進める（画面では間に描画を挟む）。戻り値: 終わったら true
+ function step(c){
+  const N=c.states.length-1;
+  if(c.v.length<=N){
+   const k=c.v.length;
+   c.v.push(k===N?c.outcome*BIG:value(c.states[k],c.H));
+   if(c.v.length<=N)return false;
+   decide(c);
+   if(c.outcome<0&&c.k>=0){c.altMoves=E.legal(c.states[c.k].b,c.H,c.states[c.k].rep);}
+   return !c.altMoves;
+  }
+  if(c.altMoves&&c.altV.length<c.altMoves.length){
+   const m=c.altMoves[c.altV.length],s=c.states[c.k];
+   c.altV.push(value(E.apply(s,{from:fr(m),to:to(m)}),c.H));
+   if(c.altV.length<c.altMoves.length)return false;
+   let bi=-1;for(let i=0;i<c.altV.length;i++)if(bi<0||c.altV[i]>c.altV[bi])bi=i;
+   const actual=c.v[c.k+1];
+   c.alt=bi>=0&&c.altV[bi]>actual?{move:c.altMoves[bi],v:c.altV[bi]}:null;
+   return true;
+  }
+  return true;
+ }
+ function decide(c){
+  const N=c.states.length-1,o=c.outcome,v=c.v;
+  const mine=[];for(let k=0;k<N;k++)if(c.states[k].turn===c.H)mine.push(k);
+  c.k=-1;c.kind=null;
+  for(const k of mine){
+   if(cls(v[k])===o||cls(v[k+1])!==o)continue;
+   let stay=true;for(let j=k+1;j<=N;j++)if(cls(v[j])!==o){stay=false;break;}
+   if(stay){c.k=k;c.kind='branch';break;}
+  }
+  if(c.k<0&&mine.length){
+   let best=-Infinity;for(const k of mine){const d=o*(v[k+1]-v[k]);if(d>best){best=d;c.k=k;}}
+   c.kind='swing';
+  }
+  if(c.k>=0){c.move=c.states[c.k+1].log[c.k];c.reason=reason(c);}
+ }
+ // side の合法手のどれかが、駒 p を中心にした変換で作られているか
+ function isCenter(b,side,rep,p){
+  for(const m of E.legal(b,side,rep)){const a=fr(m);if(a!==p&&E.explain(b,a,to(m)).some(e=>e.c===p))return true;}
+  return false;
+ }
+ const canEnterO=(s,side)=>{const k=E.kingPos(s.b,side);return k>=0&&k!==O&&E.legal(s.b,side,s.rep).indexOf(k*NN+O)>=0;};
+ // 理由の分類（上から順に、最初に当てはまったもの）
+ function reason(c){
+  const H=c.H,k=c.k,s0=c.states[k],s1=c.states[k+1],m=c.move,f=fr(m),t=to(m);
+  if(c.outcome>0){
+   if(s1.b[t]===H*K&&t===O)return {cat:'origin',text:'この手で原点に入った'};
+   if(canEnterO(s1,H)&&!canEnterO(s0,H))return {cat:'origin',text:'この手で原点が見えた'};
+   const cap=s0.b[t];
+   if(cap&&cap*H<0){
+    const p=Math.abs(cap);
+    if(isCenter(s0.b,-H,s0.rep,t))return {cat:'center',piece:p,text:'中心の @ を取って、陣形を崩した'};
+    return {cat:'capture',piece:p,text:'@ を取った'};
+   }
+   return {cat:'none',text:'この手で形勢が傾いた'};
+  }
+  // 負け: あなたの手と、実際の相手の応手で分類する
+  const s2=c.states[k+2]||null,r=s2?s2.log[k+1]:null;
+  if(r!==null&&to(r)===O&&s2.b[O]===-H*K)return {cat:'origin',text:'この手のあと、相手の POLUS が原点に入った'};
+  if(canEnterO(s1,-H)&&!canEnterO(Object.assign({},s0,{turn:-H}),-H))return {cat:'origin',text:'この手で、相手に原点を許した'};
+  if(r!==null){
+   const cap=s1.b[to(r)];
+   if(cap&&cap*H>0){
+    const p=Math.abs(cap);
+    if(isCenter(s1.b,H,s1.rep,to(r)))return {cat:'center',piece:p,text:'中心の @ を取られて、陣形を崩された'};
+    return {cat:'capture',piece:p,text:'@ を取られた'};
+   }
+  }
+  return {cat:'none',text:'この手で形勢が傾いた'};
+ }
+ function analyze(game,H){const c=prepare(game,H);if(!c)return null;while(!step(c));return c;}
+ return {D,T,BIG,cls,value,prepare,step,analyze,isCenter,canEnterO};
+})(E);
+/*REVIEW-END*/
+
 // ---------- 状態 ----------
-const G={s:null,stack:[],human:1,sel:-1,ro:false,moves:[],hot:-1,busy:false,lastEx:null,tut:null,ts:null,pv:null};
+const G={s:null,stack:[],human:1,sel:-1,ro:false,moves:[],hot:-1,busy:false,lastEx:null,tut:null,ts:null,pv:null,rv:null};
 const svg=$('board');
 const metal=side=>side===G.s.first?'au':'ag';   // 金＝先手、銀＝後手
 const fmt=(x,y)=>{
@@ -1111,6 +1239,7 @@ function render(skip){
  }
  if(hotEx)h+=overlay(G.sel,G.hot,hotEx);
  if(G.tut)h+=Tut.marks();
+ if(G.rv&&G.rv.ready)h+=rvUnder();
  h+=cons;
  for(let p=0;p<NN;p++)if(thr[p]&&!b[p]){const x=px(X[p])+15,y=py(Y[p])-15;h+='<rect class="thr m-'+om+'" stroke="none" x="'+(x-2.8)+'" y="'+(y-2.8)+'" width="5.6" height="5.6" transform="rotate(45 '+x+' '+y+')"/>';}
  // 駒
@@ -1124,6 +1253,7 @@ function render(skip){
   if(thr[p]&&b[p]*G.human>0)h+='<circle class="thrR m-'+om+'" cx="'+px(X[p])+'" cy="'+py(Y[p])+'" r="41.5"/>';
  }
  if(G.pv)h+=pvMarks();
+ if(G.rv&&G.rv.ready)h+=rvOver();
  h+=dst+'<g id="anim"></g>';
  svg.innerHTML=h;
  renderSide();
@@ -1162,11 +1292,11 @@ function renderSide(){
  for(let p=0;p<NN;p++)if(s.b[p])cnt[Math.sign(s.b[p])][Math.abs(s.b[p])]--;
  const lst=side=>{let r='';for(const t of PRISM)for(let k=0;k<cnt[side][t];k++)r+=coinSvg(metal(side),t);return r||'<span style="opacity:.5">—</span>';};
  $('capMe').innerHTML=lst(-G.human);$('capOp').innerHTML=lst(G.human);
- $('btUndo').disabled=G.busy||G.stack.length<2||!!G.tut||!!G.ts;
+ $('btUndo').disabled=G.busy||G.stack.length<2||!!G.tut||!!G.ts||!!G.rv;
  $('tsAnswer').disabled=G.busy||!!(G.ts&&G.ts.answer);
  $('btResign').hidden=!!(G.tut||G.ts);   // チュートリアルと詰めORIGO には「やめる」がある
- $('btResign').disabled=G.busy||!!s.result||s.turn!==G.human;
- $('btRec').disabled=!!G.tut||!!G.ts;   // チュートリアルと詰めORIGO は棋譜コードの対象外
+ $('btResign').disabled=G.busy||!!s.result||s.turn!==G.human||!!G.rv;
+ $('btRec').disabled=!!G.tut||!!G.ts||!!G.rv;   // チュートリアルと詰めORIGO は棋譜コードの対象外（ふりかえり中も）
  const selT=G.sel>=0?Math.abs(s.b[G.sel]):0;
  document.querySelectorAll('.leg').forEach(el=>el.classList.toggle('on',+el.dataset.t===selT));
 }
@@ -1193,6 +1323,7 @@ function hit(e){
 }
 svg.addEventListener('click',e=>{
  Snd.init();
+ if(G.rv)return;                            // ふりかえり中は盤に触れても何もしない
  if(LP.eat){LP.eat=false;return;}            // 長押しが成立したタップは、離しても手を確定しない
  if(G.tut){Tut.click(hit(e));return;}
  if(G.ts&&!Ts.canPlay()){Ts.blocked();return;}
@@ -1232,7 +1363,7 @@ function lpRing(to,ms){
 }
 svg.addEventListener('pointerdown',e=>{
  LP.eat=false;lpClear();
- if(e.button>0||G.busy||G.tut||G.ts||G.pv||G.sel<0||G.ro)return;
+ if(e.button>0||G.busy||G.tut||G.ts||G.pv||G.rv||G.sel<0||G.ro)return;
  const el=hit(e);if(!el||el.dataset.to===undefined)return;
  const to=+el.dataset.to,s=G.s,sel=G.sel;LP.x=e.clientX;LP.y=e.clientY;
  LP.show=setTimeout(()=>{LP.show=0;lpRing(to,LP.ms-LP_DELAY);},LP_DELAY);
@@ -1294,6 +1425,67 @@ function pvCancel(){
  pvDrop();G.hot=-1;Snd.fx.deselect();
  $('fmT').textContent='取り消しました。行き先を選び直してください';$('fmF').innerHTML='z′ = '+LEG[Math.abs(G.s.b[G.sel])][0];
  render();
+}
+
+// ---------- ふりかえり（表示）。解析は Review ブロック。決め手の直前の局面を盤に出し、その手を軌跡で示す ----------
+const CLS_JP={'1':'有利','0':'互角','-1':'不利'};
+function rvMove(){const g=G.rv,c=g.c;return g.show==='alt'&&c.alt?c.alt.move:c.move;}
+function rvUnder(){
+ const m=rvMove(),f=(m/NN)|0,t=m%NN,b=G.s.b,ex=E.explain(b,f,t)[0],d=pathD(f,t,ex);
+ return overlay(f,t,ex)+'<path class="consG" d="'+d+'"/><path class="cons hot" d="'+d+'"/>';
+}
+function rvOver(){
+ const m=rvMove(),f=(m/NN)|0,t=m%NN;
+ return '<circle class="selring" cx="'+px(X[f])+'" cy="'+py(Y[f])+'" r="40.5"/><g transform="translate('+px(X[t])+','+py(Y[t])+')"><circle r="40" fill="url(#gLux)"/><circle class="tgtRing" style="fill:none;stroke:#fff3cf;stroke-width:1.8" r="'+(G.s.b[t]?47:19)+'"/></g>';
+}
+function mvText(s,m){const f=(m/NN)|0,t=m%NN;return NAME[Math.abs(s.b[f])]+' '+zf(f)+' → '+zf(t);}
+function reviewStart(){
+ const s=G.s;if(!s||!s.result||!s.result.winner||G.tut||G.ts||G.rv)return;
+ const c=Review.prepare({seed:s.seed,first:s.first,log:s.log.slice(),result:s.result},G.human);if(!c)return;
+ hide('mdRes');
+ const me={c,saved:{s:G.s,stack:G.stack,lastEx:G.lastEx},show:'mine',ready:false};
+ G.rv=me;document.body.classList.add('rv-on');G.sel=-1;G.moves=[];G.hot=-1;G.busy=true;
+ $('rvTitle').textContent='解析中…';$('rvText').textContent='対局を最初から読み直して、形勢の分かれ目を探しています。';$('rvTabs').hidden=true;
+ const N=c.states.length;
+ const tick=()=>{
+  if(G.rv!==me)return;
+  const t0=performance.now();let done=false;
+  while(!done&&performance.now()-t0<40)done=Review.step(c);     // 少しずつ解析し、間で画面を更新する
+  $('rvMsg').textContent=done?'':'解析中 '+Math.min(c.v.length,N)+' / '+N+(c.altMoves?'・よかった手を探しています':'');
+  if(done){me.ms=Math.round(performance.now()-me.t0);G.busy=false;me.ready=true;reviewShow();}else setTimeout(tick,0);
+ };
+ me.t0=performance.now();render();setTimeout(tick,30);
+}
+function reviewShow(){
+ const g=G.rv,c=g.c,win=c.outcome>0;
+ if(c.k<0){$('rvTitle').textContent='決め手の一手は見つかりませんでした';$('rvText').textContent='この対局には、あなたの手がありません。';$('rvMsg').textContent='';render();return;}
+ const s=c.states[c.k];
+ G.s=s;G.stack=c.states.slice(0,c.k+1);G.lastEx=null;G.sel=-1;G.moves=[];G.hot=-1;
+ $('rvTitle').textContent=(win?'勝因の一手':'敗因の一手')+'（'+(c.k+1)+' 手目）';
+ const rs=c.reason.text.replace('@',c.reason.piece?NAME[c.reason.piece]:'');
+ const before=CLS_JP[String(Review.cls(c.v[c.k]))],after=CLS_JP[String(Review.cls(c.v[c.k+1]))];
+ let h='あなた：<b>'+mvText(s,c.move)+'</b>。'+rs+'。';
+ h+=c.kind==='branch'?'<br>形勢：'+before+' → '+after+'（この手を境に、最後まで'+(win?'有利':'不利')+'のまま）':
+  '<br>はっきりした分かれ目はなく、形勢がいちばん大きく'+(win?'良くなった':'悪くなった')+'あなたの手です（'+before+' → '+after+'）';
+ if(!win)h+=c.alt?'<br>ここでは <b>'+mvText(s,c.alt.move)+'</b> がよかった（形勢 '+CLS_JP[String(Review.cls(c.alt.v))]+'）':'<br>この局面では、これより良い手は見つかりませんでした';
+ $('rvText').innerHTML=h;
+ $('rvTabs').hidden=!(!win&&c.alt);
+ rvTab(g.show);
+}
+function rvTab(which){
+ const g=G.rv;if(!g||!g.ready)return;g.show=which==='alt'&&g.c.alt?'alt':'mine';
+ $('rvMine').setAttribute('aria-pressed',g.show==='mine');$('rvAlt').setAttribute('aria-pressed',g.show==='alt');
+ const m=rvMove(),f=(m/NN)|0,t=m%NN,ex=E.explain(G.s.b,f,t)[0];
+ showFormula(g.show==='alt'?'よかった手':'あなたの手',f,t,ex,Math.abs(G.s.b[f]));
+ $('rvMsg').textContent=g.show==='alt'?'よかった手を表示中':'';
+ render();
+}
+function reviewClose(){
+ const g=G.rv;if(!g)return;
+ G.rv=null;document.body.classList.remove('rv-on');
+ G.s=g.saved.s;G.stack=g.saved.stack;G.lastEx=g.saved.lastEx;G.busy=false;G.sel=-1;G.moves=[];G.hot=-1;
+ $('fmT').textContent='駒に触れると、跳べる点と変換が表示されます';$('fmF').innerHTML='z′ = c + w(z − c)';
+ render();show('mdRes');
 }
 
 // ---------- 進行 ----------
@@ -1362,6 +1554,7 @@ function finish(replay){
  // 勝った側の POLUS を掲げる（引き分けは両方）
  $('resCoin').innerHTML=r.winner?coinSvg(metal(r.winner),E.K):coinSvg('au',E.K)+coinSvg('ag',E.K);
  $('resTitle').textContent=title;$('resTitle').className=r.winner&&metal(r.winner)==='ag'?'ag':'';
+ $('resReviewRow').hidden=!r.winner;   // 引き分けでは出さない
  if(r.reason==='resign'){   // 「○○手で投了」。CPU の投了には決め手（詰み／原点制圧）を添える
   $('resSub').textContent=G.s.ply+' 手で投了'+(r.by===G.human?'':'（CPU）— 決め手は '+({mate:'詰み',origin:'原点制圧',mixed:'詰みか原点制圧'}[r.decisive]||'詰み'));
  }else $('resSub').textContent=why+'（'+G.s.ply+' 手）';
@@ -1376,6 +1569,7 @@ function newGame(){
 function start(s){
  G.tut=null;document.body.classList.remove('tut-on');$('formula').classList.remove('tut-glow');
  G.ts=null;document.body.classList.remove('ts-on');
+ G.rv=null;document.body.classList.remove('rv-on');
  G.s=s;G.stack=[s];G.sel=-1;G.moves=[];G.hot=-1;G.busy=false;G.lastEx=null;
  $('fmT').textContent='駒に触れると、跳べる点と変換が表示されます';$('fmF').innerHTML='z′ = c + w(z − c)';
  buildLegend();
@@ -1466,6 +1660,10 @@ $('btNew').onclick=()=>{Snd.init();show('mdStart');};
 $('btUndo').onclick=()=>{Snd.init();undo();};
 $('resNew').onclick=()=>{hide('mdRes');show('mdStart');};
 $('resView').onclick=()=>hide('mdRes');
+$('resReview').onclick=()=>{Snd.init();reviewStart();};
+$('rvClose').onclick=()=>{Snd.init();reviewClose();};
+$('rvMine').onclick=()=>rvTab('mine');
+$('rvAlt').onclick=()=>rvTab('alt');
 $('pvGo').onclick=()=>{Snd.init();if(G.pv&&!G.busy)pvCommit();};
 $('pvNo').onclick=()=>{Snd.init();if(G.pv)pvCancel();};
 $('btResign').onclick=()=>{Snd.init();if(G.busy||G.tut||G.ts||G.s.result||G.s.turn!==G.human)return;show('mdResign');$('rsNo').focus();};
@@ -1842,7 +2040,7 @@ refreshTitle();
 buildFaces();buildSky();buildTitle();buildBoard();
 start(E.newGame({seed:1,first:1}));
 G.busy=true;        // タイトルを閉じるまで盤は触れない
-window.__origo={G,E,P,play,Snd,Tut,TUT,Ts,TSUME,TSUME_ANS,Resign,Preview,PvLink};
+window.__origo={G,E,P,play,Snd,Tut,TUT,Ts,TSUME,TSUME_ANS,Resign,Preview,PvLink,Review};
 ansMark();
 })();
 </script>
