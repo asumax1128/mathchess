@@ -135,6 +135,13 @@ body.tut-on #boardWrap{max-width:min(690px,calc(100dvh - 345px))}
 .tutLit{fill:none;stroke:var(--lux);stroke-width:1.8;animation:pulse 1.4s ease-in-out infinite}
 .dst.tgt .tgtRing{fill:none;stroke:#fff3cf;stroke-width:1.8;animation:pulse 1.4s ease-in-out infinite}
 body.tut-on .dst:not(.tgt){opacity:.42}
+body.pv-on .dst:not(.tgt){opacity:.42}
+.pvsame{fill:var(--lux);opacity:.3;pointer-events:none}
+.pvsameR{fill:none;stroke:var(--lux);stroke-width:1;opacity:.28;pointer-events:none}
+#pvBar{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+#pvBar[hidden]{display:none}
+#pvText{flex:1 1 220px;font-size:12px;color:var(--mute);min-width:0;line-height:1.5}
+#pvBar .btn{padding:6px 14px;font-size:12px;letter-spacing:.1em}
 .tghost{fill:none;stroke:#d9bd7a;stroke-width:1.3;stroke-dasharray:3 5;opacity:.6;pointer-events:none}
 .tgone{stroke:#d9bd7a;stroke-width:1.3;opacity:.7;pointer-events:none}
 .tnew{fill:none;stroke:var(--lux);stroke-width:1.2;opacity:.85;pointer-events:none}
@@ -366,7 +373,7 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
       <svg id="boardBg" viewBox="0 0 760 760" aria-hidden="true"></svg>
       <svg id="board" viewBox="0 0 760 760" role="img" aria-label="盤面（複素数平面の格子点）"></svg>
     </div>
-    <div id="formula" class="plate"><div class="t" id="fmT">駒に触れると、跳べる点と変換が表示されます</div><div class="f" id="fmF">z′ = c + w(z − c)</div></div>
+    <div id="formula" class="plate"><div class="t" id="fmT">駒に触れると、跳べる点と変換が表示されます</div><div class="f" id="fmF">z′ = c + w(z − c)</div><div id="pvBar" hidden><span id="pvText"></span><button class="btn" id="pvNo">取り消す</button><button class="btn pri" id="pvGo">この手にする</button></div></div>
   </section>
   <aside>
     <div class="card plate">
@@ -952,8 +959,35 @@ const Resign=(function(E){
 })(E);
 /*RESIGN-END*/
 
+// ---------- 中心を動かす手のプレビュー（判定。エンジンは変更しない） ----------
+// プレビューを出すのは、次の両方を満たす手だけ（通常対局のみ）:
+//   1. 動かす駒が、味方の誰かの中心になっている（味方のいまの合法手のどれかが、その駒を中心にした変換で作られている）
+//   2. その手を指すと、味方の行き先の集まりが実際に変わる。
+//      「行き先の集まり」= 動かす駒を除く味方全員の、合法な行き先の点の集まり。指したあとの局面で、同じ側が続けて指すとして比べる
+// fresh = 新しく生まれる行き先、gone = 消える行き先、same = 変わらない行き先（どれも盤上の点）
+/*PREVIEW-BEGIN*/
+const Preview=(function(E){
+ const NN=E.NN,fr=m=>(m/NN)|0,to=m=>m%NN;
+ function dests(b,S,rep,skip){const d=new Set();for(const m of E.legal(b,S,rep))if(fr(m)!==skip)d.add(to(m));return d;}
+ function isCenter(s,f){
+  for(const m of E.legal(s.b,s.turn,s.rep)){const a=fr(m);if(a!==f&&E.explain(s.b,a,to(m)).some(e=>e.c===f))return true;}
+  return false;
+ }
+ function analyze(s,f,t){
+  if(!s||s.result||!(s.b[f]*s.turn>0))return null;
+  if(!isCenter(s,f))return null;
+  const n=E.apply(s,{from:f,to:t});if(!n)return null;
+  const A=dests(s.b,s.turn,s.rep,f),B=dests(n.b,s.turn,n.rep,t);
+  const fresh=[...B].filter(x=>!A.has(x)),gone=[...A].filter(x=>!B.has(x)),same=[...A].filter(x=>B.has(x));
+  if(!fresh.length&&!gone.length)return null;
+  return {from:f,to:t,fresh,gone,same};
+ }
+ return {analyze,isCenter,dests};
+})(E);
+/*PREVIEW-END*/
+
 // ---------- 状態 ----------
-const G={s:null,stack:[],human:1,sel:-1,ro:false,moves:[],hot:-1,busy:false,lastEx:null,tut:null,ts:null};
+const G={s:null,stack:[],human:1,sel:-1,ro:false,moves:[],hot:-1,busy:false,lastEx:null,tut:null,ts:null,pv:null};
 const svg=$('board');
 const metal=side=>side===G.s.first?'au':'ag';   // 金＝先手、銀＝後手
 const fmt=(x,y)=>{
@@ -991,6 +1025,9 @@ function originReach(side){
 }
 
 function render(skip){
+ // プレビューは、その局面・その駒の選択が続いている間だけ有効
+ if(G.pv&&(G.pv.s!==G.s||G.sel!==G.pv.from||G.busy||G.tut||G.ts||G.s.result))pvDrop();
+ document.body.classList.toggle('pv-on',!!G.pv);$('pvBar').hidden=!G.pv;
  const s=G.s,b=s.b;let h='';
  // 原点に手が届くとき、玉座の輪が明滅する（色は届く側の金属）
  const myR=!s.result&&originReach(G.human),opR=!s.result&&originReach(-G.human);
@@ -1007,7 +1044,7 @@ function render(skip){
    const ex=E.explain(b,G.sel,to)[0],hot=to===G.hot,d=pathD(G.sel,to,ex);
    if(hot){hotEx=ex;cons+='<path class="consG" d="'+d+'"/>';}
    cons+='<path class="cons'+(G.ro?' ro':'')+(hot?' hot':'')+'" d="'+d+'"/>';
-   const tg=G.tut&&Tut.isTarget(to);
+   const tg=(G.tut&&Tut.isTarget(to))||(!!G.pv&&G.pv.to===to);
    dst+='<g class="dst'+(G.ro?' ro':'')+(tg?' tgt':'')+'" data-to="'+to+'" transform="translate('+px(X[to])+','+py(Y[to])+')">'+(tg?'<circle r="40" fill="url(#gLux)"/><circle class="tgtRing" r="'+(b[to]?47:19)+'"/>':'')
     +(b[to]?'<circle class="ringG" r="42"/><circle class="ring" r="42"/>':'<circle r="24" fill="url(#gLux)"/><circle class="core" r="5"/>')+'<circle class="hit" r="44"/></g>';
   }
@@ -1026,6 +1063,7 @@ function render(skip){
   h+=pieceSvg(p,b[p],pre);
   if(thr[p]&&b[p]*G.human>0)h+='<circle class="thrR m-'+om+'" cx="'+px(X[p])+'" cy="'+py(Y[p])+'" r="41.5"/>';
  }
+ if(G.pv)h+=pvMarks();
  h+=dst+'<g id="anim"></g>';
  svg.innerHTML=h;
  renderSide();
@@ -1099,23 +1137,55 @@ svg.addEventListener('click',e=>{
  if(G.ts&&!Ts.canPlay()){Ts.blocked();return;}
  if(G.busy)return;
  const el=hit(e),s=G.s;
+ if(G.pv){                                  // プレビュー中: 同じ行き先でもう一度タップ＝確定、ほかの場所＝取り消し
+  if(el&&el.dataset.to!==undefined&&+el.dataset.to===G.pv.to){pvCommit();return;}
+  const p=el&&el.dataset.p!==undefined?+el.dataset.p:-1;
+  pvCancel();if(p>=0&&p!==G.sel)select(p);
+  return;
+ }
  if(!el){if(G.sel>=0){Snd.fx.deselect();deselect();}return;}
  if(el.dataset.to!==undefined){
   const to=+el.dataset.to;
   if(G.ro){ if(s.b[to])select(to); return; }
+  if(!G.tut&&!G.ts){const pv=Preview.analyze(s,G.sel,to);if(pv){pvOpen(pv);return;}}   // 通常対局だけ
   play({from:G.sel,to});return;
  }
  const p=+el.dataset.p;
  if(p===G.sel){Snd.fx.deselect();deselect();}else select(p);
 });
 svg.addEventListener('pointermove',e=>{
- if(G.busy||G.sel<0||e.pointerType==='touch')return;
+ if(G.busy||G.sel<0||G.pv||e.pointerType==='touch')return;
  const el=hit(e);const to=el&&el.dataset.to!==undefined?+el.dataset.to:-1;
  if(to===G.hot)return;
  G.hot=to;
  if(to>=0){const ex=E.explain(G.s.b,G.sel,to)[0];showFormula(G.ro?'相手の候補':'候補',G.sel,to,ex,Math.abs(G.s.b[G.sel]));}
  render();
 });
+
+// ---------- 中心を動かす手のプレビュー（表示）。チュートリアル第 5 ステップと同じ印: 光の輪＝新しい行き先、点線の輪と ×＝消える行き先 ----------
+function pvMarks(){
+ const g=G.pv,b=G.s.b;let h='';
+ for(const p of g.same){const x=px(X[p]),y=py(Y[p]);h+=b[p]?'<circle class="pvsameR" cx="'+x+'" cy="'+y+'" r="44"/>':'<circle class="pvsame" cx="'+x+'" cy="'+y+'" r="4.5"/>';}
+ for(const p of g.gone){const x=px(X[p]),y=py(Y[p]),r=b[p]?44:21;
+  h+='<circle class="tghost" cx="'+x+'" cy="'+y+'" r="'+r+'"/><path class="tgone" d="M'+(x-9)+' '+(y-9)+'L'+(x+9)+' '+(y+9)+'M'+(x+9)+' '+(y-9)+'L'+(x-9)+' '+(y+9)+'"/>';}
+ for(const p of g.fresh)h+='<circle class="tnew" cx="'+px(X[p])+'" cy="'+py(Y[p])+'" r="'+(b[p]?45:27)+'"/>';
+ return h;
+}
+function pvOpen(pv){
+ const s=G.s,ex=E.explain(s.b,pv.from,pv.to)[0];
+ G.pv=Object.assign(pv,{s});G.hot=pv.to;
+ showFormula('確認',pv.from,pv.to,ex,Math.abs(s.b[pv.from]));
+ $('fmT').textContent+=' — この手で、味方の行き先が変わります';
+ $('pvText').textContent='光の輪＝新しく行ける点 '+pv.fresh.length+'・×＝行けなくなる点 '+pv.gone.length+'（薄い点は変わらない）';
+ Snd.fx.select();render();
+}
+function pvDrop(){G.pv=null;document.body.classList.remove('pv-on');$('pvBar').hidden=true;}
+function pvCommit(){const a={from:G.pv.from,to:G.pv.to};pvDrop();play(a);}
+function pvCancel(){
+ pvDrop();G.hot=-1;Snd.fx.deselect();
+ $('fmT').textContent='取り消しました。行き先を選び直してください';$('fmF').innerHTML='z′ = '+LEG[Math.abs(G.s.b[G.sel])][0];
+ render();
+}
 
 // ---------- 進行 ----------
 function play(a){
@@ -1255,6 +1325,8 @@ $('btNew').onclick=()=>{Snd.init();show('mdStart');};
 $('btUndo').onclick=()=>{Snd.init();undo();};
 $('resNew').onclick=()=>{hide('mdRes');show('mdStart');};
 $('resView').onclick=()=>hide('mdRes');
+$('pvGo').onclick=()=>{Snd.init();if(G.pv&&!G.busy)pvCommit();};
+$('pvNo').onclick=()=>{Snd.init();if(G.pv)pvCancel();};
 $('btResign').onclick=()=>{Snd.init();if(G.busy||G.tut||G.ts||G.s.result||G.s.turn!==G.human)return;show('mdResign');$('rsNo').focus();};
 $('rsNo').onclick=()=>hide('mdResign');
 $('rsYes').onclick=()=>{hide('mdResign');if(!G.busy&&!G.tut&&!G.ts&&!G.s.result&&G.s.turn===G.human)resignGame(G.human,null);};
@@ -1628,7 +1700,7 @@ refreshTitle();
 buildFaces();buildSky();buildTitle();buildBoard();
 start(E.newGame({seed:1,first:1}));
 G.busy=true;        // タイトルを閉じるまで盤は触れない
-window.__origo={G,E,P,play,Snd,Tut,TUT,Ts,TSUME,TSUME_ANS,Resign};
+window.__origo={G,E,P,play,Snd,Tut,TUT,Ts,TSUME,TSUME_ANS,Resign,Preview};
 })();
 </script>
 </body>
