@@ -270,6 +270,22 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
 .plaque.ans-on{box-shadow:inset 1.2px 1.2px 0 rgba(255,247,216,.75),inset -1.2px -1.2px 0 rgba(48,32,5,.6),6px 9px 18px rgba(0,0,0,.55),0 0 22px rgba(255,233,176,.28)}
 .tcoins figure{transition:filter .25s}
 .tcoins figure.tap-glow{filter:drop-shadow(0 0 7px rgba(255,233,176,.55))}
+/* ふたりで対局 */
+.chip[hidden]{display:none}
+#status .chip{margin-left:4px;padding:4px 10px;flex:none}
+#status .chip::before{display:none}
+#mdTake .sheet{max-width:380px;text-align:center;padding-top:26px}
+#mdTake p{margin:8px 0 0}
+#turnToast{position:absolute;left:50%;top:50%;z-index:6;display:flex;align-items:center;gap:12px;padding:12px 24px 12px 16px;border-radius:12px;pointer-events:none;
+  background:linear-gradient(160deg,rgba(22,31,74,.94),rgba(9,13,36,.95));border:1px solid var(--hair2);box-shadow:inset 1px 1px 0 rgba(236,213,149,.1),6px 10px 26px rgba(0,0,0,.55),0 0 24px rgba(255,233,176,.12);
+  opacity:0;transform:translate(-50%,-50%) scale(.92);transition:opacity .22s,transform .22s}
+#turnToast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#turnToast .tt-coin svg{display:block;width:46px;height:auto}
+#turnToast b{font-family:var(--serif);font-weight:700;font-size:clamp(20px,5.6vw,28px);letter-spacing:.2em;padding-left:.2em;color:var(--brass-hi);white-space:nowrap}
+#turnToast.ag b{color:#e4e9f3}
+#res2pRow{display:flex;gap:8px;flex-wrap:wrap}#res2pRow[hidden]{display:none}
+#res2pRow .btn{flex:1 1 40%;padding:10px 6px;font-size:12.5px}
+#resRowStd[hidden]{display:none}
 #cutin{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(3,4,11,.5);cursor:pointer;opacity:0;transition:opacity .22s;-webkit-tap-highlight-color:transparent}
 #cutin.show{display:flex}#cutin.in{opacity:1}
 .ci-band{position:relative;width:100%;padding:38px 12px 34px;text-align:center;background:linear-gradient(180deg,rgba(5,8,22,0) 0,#050816 9%,#050816 91%,rgba(5,8,22,0) 100%);transform:scaleY(.15);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
@@ -312,7 +328,8 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
   header{padding:10px 12px 2px;gap:8px}
   h1{font-size:19px;letter-spacing:.28em}
   header .sub{display:none}
-  .tog{margin-left:auto;gap:4px}
+  header{flex-wrap:wrap}
+  .tog{margin-left:auto;gap:4px;flex-wrap:wrap;justify-content:flex-end}   /* ふたりで対局では 4 つ並ぶので、入りきらなければ折り返す */
   .chip{padding:5px 9px 5px 8px;font-size:11px}
   #boardWrap{max-width:min(100%,calc(100dvh - 190px));min-width:min(100%,300px)}
   #formula .f{font-size:16.5px}#formula .f small{font-size:12.5px;margin-left:8px}
@@ -384,11 +401,12 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
     <button class="chip" id="tgMusic" aria-pressed="true">音楽</button>
     <button class="chip" id="tgSfx" aria-pressed="true">効果音</button>
     <button class="chip" id="tgThreat" aria-pressed="true" title="相手の駒が次に跳べる点を表示">相手の利き</button>
+    <button class="chip" id="tgRot" aria-pressed="true" hidden title="手番が替わるたびに盤を回して、手番の側を下に">盤の回転</button>
   </div>
 </header>
 <main>
   <section>
-    <div id="status"><span class="dot"></span><span id="stText"></span><span id="plyNo"></span></div>
+    <div id="status"><span class="dot"></span><span id="stText"></span><span id="plyNo"></span><button class="chip" id="btFlip" hidden title="盤を 180° 回す">盤を回す</button></div>
     <div id="rvCard" class="plate" aria-live="polite">
       <div class="tc-head"><span class="tc-step">ふりかえり</span><span class="ts-tools"><button class="chip" id="rvClose">閉じる</button></span></div>
       <div class="tc-title" id="rvTitle"></div>
@@ -418,6 +436,7 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
     <div id="boardWrap">
       <svg id="boardBg" viewBox="0 0 760 760" aria-hidden="true"></svg>
       <svg id="board" viewBox="0 0 760 760" role="img" aria-label="盤面（複素数平面の格子点）"></svg>
+      <div id="turnToast" role="status" aria-live="polite"></div>
     </div>
     <div id="formula" class="plate"><div class="t" id="fmT">駒に触れると、跳べる点と変換が表示されます</div><div class="f" id="fmF">z′ = c + w(z − c)</div><div id="pvBar" hidden><span id="pvText"></span><button class="btn" id="pvNo">取り消す</button><button class="btn pri" id="pvGo">この手にする</button></div></div>
   </section>
@@ -434,7 +453,7 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
       <div id="legend"></div>
     </div>
     <div class="card plate">
-      <div class="cap"><div>取った駒<div class="row" id="capMe"></div></div><div>取られた駒<div class="row" id="capOp"></div></div></div>
+      <div class="cap"><div><span id="capMeT">取った駒</span><div class="row" id="capMe"></div></div><div><span id="capOpT">取られた駒</span><div class="row" id="capOp"></div></div></div>
     </div>
     <div class="card plate">
       <div class="btns">
@@ -454,6 +473,7 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
   <div class="plaque"><i></i><i></i><i></i><i></i><b>PRISM</b><span>POLUS · ROTA · IMAGO · SPIRA · MAGNA</span></div>
   <div class="tsetup">
     <button class="btn tut-entry" id="stTut"><b>チュートリアル</b><small>初めての方へ・7 ステップ</small></button>
+    <button class="btn tut-entry done" id="stP2"><b>ふたりで対局</b><small id="stP2Sub">1 台を交互に持って</small></button>
     <div class="title-pair"><button class="btn tut-entry done" id="stTsume"><b>詰めORIGO</b><small id="stTsumeSub">24 問</small></button><button class="btn tut-entry done" id="stToday"><b>今日の詰め</b><small id="stTodaySub"></small></button></div>
     <div class="lab">CPU</div>
     <div class="opt" id="optLv"></div>
@@ -538,7 +558,14 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
   <p id="resSub"></p>
   <p class="lead" id="resStat"></p>
   <div class="row" id="resReviewRow" hidden><button class="btn" id="resReview">ふりかえり</button></div>
-  <div class="row"><button class="btn" id="resView">盤面を見る</button><button class="btn pri" id="resNew">もう一局</button></div>
+  <div class="row" id="resRowStd"><button class="btn" id="resView">盤面を見る</button><button class="btn pri" id="resNew">もう一局</button></div>
+  <div class="row" id="res2pRow" hidden><button class="btn" id="res2View">盤面を見る</button><button class="btn" id="res2Same">先後を替えずにもう一局</button><button class="btn pri" id="res2Swap" style="flex-basis:100%">先後を交代してもう一局</button><button class="btn" id="res2Title" style="flex-basis:100%">タイトルへ</button></div>
+</div></div>
+
+<div class="modal" id="mdTake"><div class="sheet">
+  <h2>待ったをしますか？</h2>
+  <p>2 手戻します。相手の応手と、あなたの前の手を取り消します。</p>
+  <div class="row"><button class="btn" id="tkNo">やめる</button><button class="btn pri" id="tkYes">2 手戻す</button></div>
 </div></div>
 
 <script>
@@ -742,7 +769,7 @@ LEG[E.SCA]=['c + k(z − c)','c から見て k 倍。k = ±2, ±½, −1','<i>z�
 // ---------- 設定の保存 ----------
 const store={get(k,d){try{const v=localStorage.getItem('origo.'+k);return v===null?d:JSON.parse(v);}catch(e){return d;}},
  set(k,v){try{localStorage.setItem('origo.'+k,JSON.stringify(v));}catch(e){}}};
-const P={music:store.get('music',true),sfx:store.get('sfx',true),threat:store.get('threat',true),level:store.get('level',1),first:store.get('first',1)};
+const P={music:store.get('music',true),sfx:store.get('sfx',true),threat:store.get('threat',true),level:store.get('level',1),first:store.get('first',1),rot:store.get('rot',true)};
 
 // ---------- 音（Web Audio 合成。BGM と効果音は同じ音階 D ドリアン・同じ音色） ----------
 const Snd=(function(){
@@ -812,6 +839,7 @@ const Snd=(function(){
   check(){seq([[5,1],[2,1]],.02,.09,.8);},
   win(){seq([[0,1],[2,1],[4,1],[6,1],[8,1],[11,1]],.13,.11,1.4);},
   cutin(){seq([[0,1],[2,1],[4,1],[6,1],[8,1]],.23,.1,.7);},
+  turn(){seq([[4,1],[2,1]],.12,.06,.35);},
   lose(){seq([[11,0],[9,0],[7,0],[5,0],[2,0],[0,0]],.16,.1,1.4);},
   draw(){seq([[0,1],[4,1],[0,1]],.2,.09,1);}
  };
@@ -879,7 +907,21 @@ function buildTitle(){
  $('tCoins').innerHTML=PRISM.map(t=>'<figure data-t="'+t+'">'+coinSvg('au',t)+'<figcaption>'+NAME[t]+'</figcaption></figure>').join('');
 }
 // 盤の静的レイヤ: 真鍮の縁・留め具・藍のマットな地・目盛り環・格子・玉座
-const px=x=>380+x*90, py=y=>380-y*90;
+// 盤の向き: V.s = 1 なら通常（+1 側の陣が下）、−1 なら 180° 回した向き（z → −z。−1 側の陣が下）。
+// 描画はすべてこの写像（px, py）を通すので、駒・印・軌跡・タップの当たりは向きに関係なく同じ点を指す。
+const V={s:1};
+const px=x=>380+V.s*90*x, py=y=>380-V.s*90*y;
+function labelsHtml(){
+ const lab='font-family="Times New Roman,Times,Georgia,serif" font-style="italic" font-size="21" fill="#d6ba7c" opacity=".9"';
+ const bx=py(V.s>0?-3:3)+69,lx=px(V.s>0?-3:3)-49;     // 目盛りは、いつも画面の下と左に置く（回した向きでは、値の並びが逆になる）
+ let h='';
+ for(let k=-3;k<=3;k++){
+  h+='<text x="'+px(k)+'" y="'+bx+'" text-anchor="middle" '+lab+'>'+(k<0?'−'+(-k):k)+'</text>';
+  if(k)h+='<text x="'+lx+'" y="'+(py(k)+7)+'" text-anchor="end" '+lab+'>'+(k<0?'−':'')+(Math.abs(k)===1?'':Math.abs(k))+'i</text>';}
+ return h;
+}
+function viewLabels(){const g=document.getElementById('bgLab');if(g)g.innerHTML=labelsHtml();}
+function viewSetNow(v){if(V.s===v)return;V.s=v;viewLabels();}
 function buildBoard(){
  let h='<defs>'
   +'<radialGradient id="gPlate" gradientUnits="userSpaceOnUse" cx="290" cy="250" r="560"><stop offset="0" stop-color="#18225a"/><stop offset=".5" stop-color="#0d1438"/><stop offset="1" stop-color="#070a20"/></radialGradient>'
@@ -895,18 +937,16 @@ function buildBoard(){
  h+='<rect x="30" y="30" width="700" height="700" rx="13" fill="#fff" filter="url(#fGrain)" opacity=".2"/>';
  // 目盛り環（地に彫った細線。主役ではないので薄く）
  h+='<g clip-path="url(#clipPlate)"><circle cx="380" cy="380" r="304" fill="none" stroke="#c9a45a" stroke-opacity=".3" stroke-width=".8"/><g stroke="#c9a45a">'+ticks(380,380,304,[[5,5,.8,.28],[10,8,.9,.4],[30,13,1.3,.6]])+'</g></g>';
- // 格子（真鍮の細線）と軸
+ // 格子（真鍮の細線）と軸。盤を回す間は、この層（格子と点）だけが回る
  let g='';
  for(let k=-3;k<=3;k++){const ax=k===0;
   g+='<line x1="'+px(k)+'" y1="'+py(-3)+'" x2="'+px(k)+'" y2="'+py(3)+'" stroke-width="'+(ax?1.5:1)+'" opacity="'+(ax?.85:.36)+'"/>';
   g+='<line x1="'+px(-3)+'" y1="'+py(k)+'" x2="'+px(3)+'" y2="'+py(k)+'" stroke-width="'+(ax?1.5:1)+'" opacity="'+(ax?.85:.36)+'"/>';}
- h+='<g stroke="#c9a45a">'+g+'</g>';
- for(let i=0;i<NN;i++)if(i!==E.O)h+='<circle cx="'+px(X[i])+'" cy="'+py(Y[i])+'" r="2.1" fill="#dcc07a" opacity=".7"/>';
- // 座標の目盛り（横: −3〜3、縦: 虚軸 3i〜−3i）
- const lab='font-family="Times New Roman,Times,Georgia,serif" font-style="italic" font-size="21" fill="#d6ba7c" opacity=".9"';
- for(let k=-3;k<=3;k++){
-  h+='<text x="'+px(k)+'" y="'+(py(-3)+69)+'" text-anchor="middle" '+lab+'>'+(k<0?'−'+(-k):k)+'</text>';
-  if(k)h+='<text x="'+(px(-3)-49)+'" y="'+(py(k)+7)+'" text-anchor="end" '+lab+'>'+(k<0?'−':'')+(Math.abs(k)===1?'':Math.abs(k))+'i</text>';}
+ let dots='';
+ for(let i=0;i<NN;i++)if(i!==E.O)dots+='<circle cx="'+px(X[i])+'" cy="'+py(Y[i])+'" r="2.1" fill="#dcc07a" opacity=".7"/>';
+ h+='<g id="bgGrid"><g stroke="#c9a45a">'+g+'</g>'+dots+'</g>';
+ // 座標の目盛り（横: −3〜3、縦: 虚軸 3i〜−3i）。向きを変えたときは、この層だけ作り直す
+ h+='<g id="bgLab" style="transition:opacity .25s">'+labelsHtml()+'</g>';
  // 原点 O: 光と二重の輪の「玉座」
  h+='<circle cx="380" cy="380" r="92" fill="url(#gLuxSoft)"/>';
  h+='<circle cx="380" cy="380" r="42.5" fill="none" stroke="#f0d07a" stroke-width="1.5" opacity=".95"/><circle cx="380" cy="380" r="47.5" fill="none" stroke="#f0d07a" stroke-width=".8" opacity=".55"/>';
@@ -1176,7 +1216,7 @@ const Review=(function(E){
 /*REVIEW-END*/
 
 // ---------- 状態 ----------
-const G={s:null,stack:[],human:1,sel:-1,ro:false,moves:[],hot:-1,busy:false,lastEx:null,tut:null,ts:null,pv:null,rv:null};
+const G={s:null,stack:[],human:1,sel:-1,ro:false,moves:[],hot:-1,busy:false,lastEx:null,tut:null,ts:null,pv:null,rv:null,p2:null};
 const svg=$('board');
 const metal=side=>side===G.s.first?'au':'ag';   // 金＝先手、銀＝後手
 const fmt=(x,y)=>{
@@ -1202,7 +1242,7 @@ function pathD(from,to,ex){
  return d;
 }
 function pieceSvg(p,v,pre){
- return '<g class="pc" data-p="'+p+'" transform="translate('+px(X[p])+','+py(Y[p])+')">'+(pre||'')+coin(metal(Math.sign(v)),Math.abs(v))+'</g>';
+ return '<g class="pc" data-p="'+p+'" transform="translate('+px(X[p])+','+py(Y[p])+')"><g class="pcin">'+(pre||'')+coin(metal(Math.sign(v)),Math.abs(v))+'</g></g>';
 }
 function movesOf(p){
  const s=G.s,side=Math.sign(s.b[p]);
@@ -1225,7 +1265,7 @@ function render(skip){
  if(s.last&&G.lastEx)h+='<path class="last" d="'+pathD(s.last.from,s.last.to,G.lastEx)+'"/><circle class="lastdot" cx="'+px(X[s.last.from])+'" cy="'+py(Y[s.last.from])+'" r="6"/>';
  // 相手の利き
  const thr=new Uint8Array(NN),om=metal(-G.human);
- if(P.threat&&!s.result&&!G.tut&&!G.ts){const buf=new Int32Array(512),n=E.gen(b,-G.human,buf);for(let i=0;i<n;i++)thr[buf[i]%NN]=1;}
+ if(P.threat&&!s.result&&!G.tut&&!G.ts&&!(G.p2&&G.p2.turning)){const buf=new Int32Array(512),n=E.gen(b,-G.human,buf);for(let i=0;i<n;i++)thr[buf[i]%NN]=1;}
  // 選択中の駒の作図（軌跡は光で描く）
  let cons='',dst='',hotEx=null;
  if(G.sel>=0){
@@ -1278,25 +1318,30 @@ function showFormula(title,from,to,ex,t){
 function renderSide(){
  const s=G.s,st=$('status');
  let txt='',cls=metal(s.turn);
- if(s.result){txt=s.result.reason==='resign'?(s.result.by===G.human?'あなたが投了しました':'CPU が投了しました'):'対局終了';cls='';}
- else if(s.turn===G.human){txt='あなたの番です';
+ const me=G.p2?s.turn:G.human;        // 2 人対戦では、手番の側がそのまま「あなた」
+ if(s.result){txt=s.result.reason==='resign'?(G.p2?colorName(s.result.by)+'が投了しました':s.result.by===G.human?'あなたが投了しました':'CPU が投了しました'):'対局終了';cls='';}
+ else if(G.p2||s.turn===G.human){txt=G.p2?colorName(s.turn)+'の番です':'あなたの番です';
   if(E.inCheck(s.b,s.turn)){txt='POLUS が狙われています。受けてください';cls+=' warn';}
-  else if(s.b[E.O]===-G.human*E.K){txt='相手の POLUS が原点にいます。この 1 手で狙えなければ負けです';cls+=' warn';}
-  else if(originReach(-G.human)){txt='相手の POLUS が次に原点へ入れます。原点に利きを作ってください';cls+=' warn';}
-  else if(originReach(G.human)){txt='POLUS を原点 O へ進められます（相手が 1 手で狙えなければ勝ち）';}
+  else if(s.b[E.O]===-me*E.K){txt='相手の POLUS が原点にいます。この 1 手で狙えなければ負けです';cls+=' warn';}
+  else if(originReach(-me)){txt='相手の POLUS が次に原点へ入れます。原点に利きを作ってください';cls+=' warn';}
+  else if(originReach(me)){txt='POLUS を原点 O へ進められます（相手が 1 手で狙えなければ勝ち）';}
+  if(G.p2&&txt!==colorName(s.turn)+'の番です')txt=colorName(s.turn)+'の番です　'+txt;
  }else txt='CPU が考えています…';
  st.className=cls;$('stText').textContent=txt;
- $('plyNo').textContent=(s.ply+1)+' 手目・CPU '+LV[P.level].name;
+ $('plyNo').textContent=(s.ply+1)+' 手目・'+(G.p2?'ふたりで対局':'CPU '+LV[P.level].name);
  // 取った駒（相手の金属）／取られた駒（自分の金属）
  const cnt={1:[0,0,0,0,0,0],'-1':[0,0,0,0,0,0]},b0=G.stack[0].b;
  for(let p=0;p<NN;p++)if(b0[p])cnt[Math.sign(b0[p])][Math.abs(b0[p])]++;
  for(let p=0;p<NN;p++)if(s.b[p])cnt[Math.sign(s.b[p])][Math.abs(s.b[p])]--;
  const lst=side=>{let r='';for(const t of PRISM)for(let k=0;k<cnt[side][t];k++)r+=coinSvg(metal(side),t);return r||'<span style="opacity:.5">—</span>';};
- $('capMe').innerHTML=lst(-G.human);$('capOp').innerHTML=lst(G.human);
- $('btUndo').disabled=G.busy||G.stack.length<2||!!G.tut||!!G.ts||!!G.rv;
+ if(G.p2){$('capMeT').textContent='金が取った駒';$('capOpT').textContent='銀が取った駒';$('capMe').innerHTML=lst(-s.first);$('capOp').innerHTML=lst(s.first);}   // 2 人対戦は色で分ける
+ else{$('capMeT').textContent='取った駒';$('capOpT').textContent='取られた駒';$('capMe').innerHTML=lst(-G.human);$('capOp').innerHTML=lst(G.human);}
+ $('btUndo').textContent=G.p2?'待った':'一手戻す';
+ $('btUndo').disabled=G.p2?(G.busy||!!s.result||s.ply<2||!!G.rv):(G.busy||G.stack.length<2||!!G.tut||!!G.ts||!!G.rv);
+ $('tgRot').hidden=!G.p2;$('btFlip').hidden=!G.p2;$('btFlip').disabled=G.busy||!!G.rv;
  $('tsAnswer').disabled=G.busy||!!(G.ts&&G.ts.answer);
  $('btResign').hidden=!!(G.tut||G.ts);   // チュートリアルと詰めORIGO には「やめる」がある
- $('btResign').disabled=G.busy||!!s.result||s.turn!==G.human||!!G.rv;
+ $('btResign').disabled=G.busy||!!s.result||(!G.p2&&s.turn!==G.human)||!!G.rv;
  $('btRec').disabled=!!G.tut||!!G.ts||!!G.rv;   // チュートリアルと詰めORIGO は棋譜コードの対象外（ふりかえり中も）
  const selT=G.sel>=0?Math.abs(s.b[G.sel]):0;
  document.querySelectorAll('.leg').forEach(el=>el.classList.toggle('on',+el.dataset.t===selT));
@@ -1442,9 +1487,11 @@ function rvOver(){
 function mvText(s,m){const f=(m/NN)|0,t=m%NN;return NAME[Math.abs(s.b[f])]+' '+zf(f)+' → '+zf(t);}
 function reviewStart(){
  const s=G.s;if(!s||!s.result||!s.result.winner||G.tut||G.ts||G.rv)return;
- const c=Review.prepare({seed:s.seed,first:s.first,log:s.log.slice(),result:s.result},G.human);if(!c)return;
+ const H=G.p2?-s.result.winner:G.human;       // 2 人対戦: 視点は敗れた側（敗因の一手と、よかった手）
+ const c=Review.prepare({seed:s.seed,first:s.first,log:s.log.slice(),result:s.result},H);if(!c)return;
  hide('mdRes');
- const me={c,saved:{s:G.s,stack:G.stack,lastEx:G.lastEx},show:'mine',ready:false};
+ const me={c,saved:{s:G.s,stack:G.stack,lastEx:G.lastEx,human:G.human,view:V.s},show:'mine',ready:false};
+ if(G.p2){G.human=H;viewSetNow(H<0?-1:1);}       // 視点の側を下にして見せる
  G.rv=me;document.body.classList.add('rv-on');G.sel=-1;G.moves=[];G.hot=-1;G.busy=true;
  $('rvTitle').textContent='解析中…';$('rvText').textContent='対局を最初から読み直して、形勢の分かれ目を探しています。';$('rvTabs').hidden=true;
  const N=c.states.length;
@@ -1465,11 +1512,13 @@ function reviewShow(){
  $('rvTitle').textContent=(win?'勝因の一手':'敗因の一手')+'（'+(c.k+1)+' 手目）';
  const rs=c.reason.text.replace('@',c.reason.piece?NAME[c.reason.piece]:'');
  const before=CLS_JP[String(Review.cls(c.v[c.k]))],after=CLS_JP[String(Review.cls(c.v[c.k+1]))];
- let h='あなた：<b>'+mvText(s,c.move)+'</b>。'+rs+'。';
+ const meName=G.p2?colorName(c.H)+'（敗れた側）':'あなた';
+ let h=meName+'：<b>'+mvText(s,c.move)+'</b>。'+rs+'。';
  h+=c.kind==='branch'?'<br>形勢：'+before+' → '+after+'（この手を境に、最後まで'+(win?'有利':'不利')+'のまま）':
-  '<br>はっきりした分かれ目はなく、形勢がいちばん大きく'+(win?'良くなった':'悪くなった')+'あなたの手です（'+before+' → '+after+'）';
+  '<br>はっきりした分かれ目はなく、形勢がいちばん大きく'+(win?'良くなった':'悪くなった')+(G.p2?'この手':'あなたの手')+'です（'+before+' → '+after+'）';
  if(!win)h+=c.alt?'<br>ここでは <b>'+mvText(s,c.alt.move)+'</b> がよかった（形勢 '+CLS_JP[String(Review.cls(c.alt.v))]+'）':'<br>この局面では、これより良い手は見つかりませんでした';
  $('rvText').innerHTML=h;
+ $('rvMine').textContent=G.p2?'この手':'あなたの手';
  $('rvTabs').hidden=!(!win&&c.alt);
  rvTab(g.show);
 }
@@ -1477,13 +1526,14 @@ function rvTab(which){
  const g=G.rv;if(!g||!g.ready)return;g.show=which==='alt'&&g.c.alt?'alt':'mine';
  $('rvMine').setAttribute('aria-pressed',g.show==='mine');$('rvAlt').setAttribute('aria-pressed',g.show==='alt');
  const m=rvMove(),f=(m/NN)|0,t=m%NN,ex=E.explain(G.s.b,f,t)[0];
- showFormula(g.show==='alt'?'よかった手':'あなたの手',f,t,ex,Math.abs(G.s.b[f]));
+ showFormula(g.show==='alt'?'よかった手':G.p2?colorName(g.c.H)+'の手':'あなたの手',f,t,ex,Math.abs(G.s.b[f]));
  $('rvMsg').textContent=g.show==='alt'?'よかった手を表示中':'';
  render();
 }
 function reviewClose(){
  const g=G.rv;if(!g)return;
  G.rv=null;document.body.classList.remove('rv-on');
+ G.human=g.saved.human;viewSetNow(g.saved.view);
  G.s=g.saved.s;G.stack=g.saved.stack;G.lastEx=g.saved.lastEx;G.busy=false;G.sel=-1;G.moves=[];G.hot=-1;
  $('fmT').textContent='駒に触れると、跳べる点と変換が表示されます';$('fmF').innerHTML='z′ = c + w(z − c)';
  render();show('mdRes');
@@ -1494,7 +1544,7 @@ function play(a){
  const s=G.s,ex=E.explain(s.b,a.from,a.to)[0],t=Math.abs(s.b[a.from]),cap=s.b[a.to]!==0,mover=s.turn;
  const n=E.apply(s,a);if(!n)return;
  G.busy=true;G.sel=-1;G.moves=[];G.hot=-1;
- showFormula(mover===G.human?'あなた':'CPU',a.from,a.to,ex,t);
+ showFormula(G.p2?colorName(mover):mover===G.human?'あなた':'CPU',a.from,a.to,ex,t);
  render(a.from);
  // 作図を見せながら、変換の軌跡どおりに駒を動かす
  const an=$('anim'),d=pathD(a.from,a.to,ex);
@@ -1507,6 +1557,7 @@ function play(a){
   if(G.s!==s)return;             // 動きの途中で別の対局が始まった
   G.s=n;G.stack.push(n);G.lastEx=ex;G.busy=false;
   if(cap)Snd.fx.capture();
+  if(G.p2){P2.after(n);return;}                // 2 人対戦: 手番の受け渡し（盤の回転・手番の表示）
   render();
   if(G.tut){Tut.after(n);return;}
   if(G.ts){Ts.after(n);return;}
@@ -1544,6 +1595,8 @@ function resignGame(by,why){
  render();finish();
 }
 function finish(replay){
+ if(G.p2){P2.finish(replay);return;}
+ $('resRowStd').hidden=false;$('res2pRow').hidden=true;
  const r=G.s.result,st=store.get('stat',{});
  const k='L'+P.level;st[k]=st[k]||[0,0,0];
  let title;
@@ -1557,7 +1610,7 @@ function finish(replay){
  $('resTitle').textContent=title;$('resTitle').className=r.winner&&metal(r.winner)==='ag'?'ag':'';
  $('resReviewRow').hidden=!r.winner;   // 引き分けでは出さない
  if(r.reason==='resign'){   // 「○○手で投了」。CPU の投了には決め手（詰み／原点制圧）を添える
-  $('resSub').textContent=G.s.ply+' 手で投了'+(r.by===G.human?'':'（CPU）— 決め手は '+({mate:'詰み',origin:'原点制圧',mixed:'詰みか原点制圧'}[r.decisive]||'詰み'));
+  $('resSub').textContent=G.s.ply+' 手で投了'+(r.by===G.human?'':r.decisive?'（CPU）— 決め手は '+({mate:'詰み',origin:'原点制圧',mixed:'詰みか原点制圧'}[r.decisive]||'詰み'):'（相手）');
  }else $('resSub').textContent=why+'（'+G.s.ply+' 手）';
  $('resStat').textContent=replay?'棋譜コードからの再生':'CPU '+LV[P.level].name+' との通算　'+st[k][0]+' 勝 '+st[k][1]+' 敗'+(st[k][2]?' '+st[k][2]+' 分':'');
  setTimeout(()=>show('mdRes'),700);
@@ -1567,15 +1620,17 @@ function newGame(){
  let first=P.first;if(first===0)first=(E.rng(seed)()<.5)?1:-1;
  start(E.newGame({seed,first}));
 }
-function start(s){
+function start(s,p2){
  G.tut=null;document.body.classList.remove('tut-on');$('formula').classList.remove('tut-glow');
  G.ts=null;document.body.classList.remove('ts-on');
  G.rv=null;document.body.classList.remove('rv-on');
+ G.p2=p2||null;G.human=p2?s.turn:1;
+ viewSetNow(p2&&P.rot&&s.turn<0?-1:1);
  G.s=s;G.stack=[s];G.sel=-1;G.moves=[];G.hot=-1;G.busy=false;G.lastEx=null;
  $('fmT').textContent='駒に触れると、跳べる点と変換が表示されます';$('fmF').innerHTML='z′ = c + w(z − c)';
  buildLegend();
  render();
- if(!s.result&&s.turn!==G.human)cpu();
+ if(!G.p2&&!s.result&&s.turn!==G.human)cpu();
 }
 function undo(){
  if(G.busy||G.stack.length<2)return;
@@ -1587,6 +1642,91 @@ function undo(){
  render();
  if(G.s.turn!==G.human)cpu();
 }
+
+// ---------- ふたりで対局（1 台を交互に持つ。ルールは通常対局と同じ。エンジンは変更しない） ----------
+// 2 人対戦では、手番の側を G.human にする（既存の「あなた」の扱いをそのまま使う）。CPU は呼ばない。
+// 先手（金）は E.newGame の first で決まる。先後を替えた再戦は first を反転するだけ（陣の初期配置は変わらない）。
+const colorName=side=>metal(side)==='au'?'金':'銀';
+const P2=(function(){
+ const stat=()=>store.get('p2stat',{au:0,ag:0,dr:0});
+ const reduce=()=>window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;
+ let toastT=0;
+ const want=s=>P.rot?(s.turn<0?-1:1):V.s;     // 回転オンなら、手番の側の陣を下にする
+ // 盤を 180° 回す。回る間は、駒と印の層と、格子の層だけが回る（駒は逆に回して立てたまま、目盛りは消して回し終えてから付け直す）
+ function rotate(done){
+  const grid=document.getElementById('bgGrid'),lab=document.getElementById('bgLab');
+  const fin=()=>{svg.style.transform='';if(grid)grid.removeAttribute('transform');V.s=-V.s;viewLabels();if(lab)lab.style.opacity='';done&&done();};
+  if(reduce()||document.hidden){fin();return;}
+  if(lab)lab.style.opacity='0';
+  const t0=performance.now(),dur=720;
+  function frame(now){
+   const u=Math.min(1,(now-t0)/dur),e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2,phi=Math.PI*e,deg=phi*180/Math.PI;
+   svg.style.transform='rotate('+phi.toFixed(4)+'rad)';
+   if(grid)grid.setAttribute('transform','rotate('+deg.toFixed(2)+' 380 380)');
+   svg.querySelectorAll('.pcin').forEach(g=>g.setAttribute('transform','rotate('+(-deg).toFixed(2)+')'));
+   if(u<1)requestAnimationFrame(frame);else fin();
+  }
+  requestAnimationFrame(frame);
+ }
+ function toast(side){
+  const el=$('turnToast');clearTimeout(toastT);
+  el.innerHTML='<span class="tt-coin">'+coinSvg(metal(side),E.K)+'</span><b>'+colorName(side)+'の番です</b>';
+  el.className='show'+(metal(side)==='ag'?' ag':'');
+  toastT=setTimeout(()=>{el.className=metal(side)==='ag'?'ag':'';},1150);
+ }
+ function refresh(){
+  const st=stat();$('stP2Sub').textContent='金 '+st.au+' 勝・銀 '+st.ag+' 勝・引分 '+st.dr+'（この端末）';
+ }
+ function startGame(first){
+  const seed=(Date.now()^(performance.now()*1000))>>>0||1;
+  const s=E.newGame({seed,first});
+  start(s,{turning:false});
+  toast(s.turn);
+ }
+ // 1 手指し終えたあとの受け渡し
+ function after(n){
+  const g=G.p2;
+  if(n.result){G.busy=false;render();finish();return;}
+  if(E.inCheck(n.b,n.turn))Snd.fx.check();
+  const handOver=()=>{G.human=n.turn;g.turning=false;G.busy=false;buildLegend();render();toast(n.turn);};
+  if(want(n)!==V.s){g.turning=true;G.busy=true;render();Snd.fx.turn();rotate(handOver);}
+  else handOver();
+ }
+ function finish(replay){
+  const r=G.s.result,w=r.winner,st=stat();
+  if(!replay){if(w)st[metal(w)]++;else st.dr++;store.set('p2stat',st);if(w)Snd.fx.win();else Snd.fx.draw();}
+  refresh();
+  const why={mate:'詰み — POLUS の逃げ場がありません',origin:'原点制圧 — POLUS が原点 O で 1 手をしのぎました',stale:'手なし — 指せる手がありません',limit:'120 手で決着がつきませんでした'}[r.reason];
+  $('resCoin').innerHTML=w?coinSvg(metal(w),E.K):coinSvg('au',E.K)+coinSvg('ag',E.K);
+  $('resTitle').textContent=w?colorName(w)+'の勝ち':'引き分け';$('resTitle').className=w&&metal(w)==='ag'?'ag':'';
+  $('resReviewRow').hidden=!w;
+  $('resSub').textContent=r.reason==='resign'?G.s.ply+' 手で投了（'+colorName(r.by)+'）':why+'（'+G.s.ply+' 手）';
+  $('resStat').textContent=replay?'棋譜コードからの再生':'この端末の通算　金 '+st.au+' 勝・銀 '+st.ag+' 勝'+(st.dr?'・引分 '+st.dr:'');
+  $('resRowStd').hidden=true;$('res2pRow').hidden=false;
+  setTimeout(()=>show('mdRes'),700);
+ }
+ // 待った: 自分の番のとき、2 手戻す（相手の応手と、自分の前の手）。棋譜は G.s.log から書き出すので、そのまま戻った状態になる
+ function takeback(){
+  if(!G.p2||G.busy||G.s.result||G.s.ply<2||G.stack.length<3)return false;
+  G.stack.pop();G.stack.pop();G.s=G.stack[G.stack.length-1];
+  G.sel=-1;G.moves=[];G.hot=-1;G.lastEx=null;
+  if(G.s.last){const prev=G.stack[G.stack.length-2];if(prev)G.lastEx=E.explain(prev.b,G.s.last.from,G.s.last.to)[0];}
+  G.human=G.s.turn;
+  $('fmT').textContent='2 手戻しました。'+colorName(G.s.turn)+'の番です';$('fmF').innerHTML='z′ = c + w(z − c)';
+  render();return true;
+ }
+ function flip(){
+  if(!G.p2||G.busy||G.rv)return;
+  const g=G.p2;g.turning=true;G.busy=true;Snd.fx.turn();
+  rotate(()=>{g.turning=false;G.busy=false;render();});
+ }
+ function rotChanged(){            // 回転の設定を変えた直後: オンにしたら、いまの手番に向きを合わせる
+  if(!G.p2||G.busy||G.s.result||G.rv)return;
+  if(P.rot&&want(G.s)!==V.s)flip();
+ }
+ function rematch(swap){hide('mdRes');startGame(swap?-G.s.first:G.s.first);}
+ return {startGame,after,finish,takeback,flip,rotChanged,rematch,refresh,toast};
+})();
 
 // ---------- 画面部品 ----------
 function show(id){$(id).classList.add('show');if(id==='mdStart')document.body.classList.add('title-on');}
@@ -1607,6 +1747,15 @@ function bindOpt(id,key){
 bindOpt('optLv','level');bindOpt('optFirst','first');
 $('stGo').onclick=()=>{Snd.init();hide('mdStart');newGame();};
 $('stRules').onclick=()=>show('mdRules');
+$('stP2').onclick=()=>{Snd.init();hide('mdStart');P2.startGame(1);};
+$('btFlip').onclick=()=>{Snd.init();P2.flip();};
+bindTog('tgRot','rot',()=>P2.rotChanged());
+$('tkNo').onclick=()=>hide('mdTake');
+$('tkYes').onclick=()=>{hide('mdTake');P2.takeback();};
+$('res2View').onclick=()=>hide('mdRes');
+$('res2Same').onclick=()=>{Snd.init();P2.rematch(false);};
+$('res2Swap').onclick=()=>{Snd.init();P2.rematch(true);};
+$('res2Title').onclick=()=>{hide('mdRes');show('mdStart');};
 $('stTut').onclick=()=>{Snd.init();hide('mdStart');Tut.start();};
 $('stTsume').onclick=()=>{Snd.init();Ts.list();};
 $('stToday').onclick=()=>{Snd.init();hide('mdStart');Ts.start(Ts.today());};
@@ -1658,7 +1807,7 @@ $('tutToGame').onclick=()=>{Snd.init();hide('mdTut');newGame();};
 $('tutToTitle').onclick=()=>{hide('mdTut');Tut.quit();};
 $('btRules').onclick=()=>show('mdRules');
 $('btNew').onclick=()=>{Snd.init();show('mdStart');};
-$('btUndo').onclick=()=>{Snd.init();undo();};
+$('btUndo').onclick=()=>{Snd.init();if(G.p2){if(!G.busy&&!G.s.result&&G.s.ply>=2){show('mdTake');$('tkNo').focus();}}else undo();};
 $('resNew').onclick=()=>{hide('mdRes');show('mdStart');};
 $('resView').onclick=()=>hide('mdRes');
 $('resReview').onclick=()=>{Snd.init();reviewStart();};
@@ -1680,7 +1829,8 @@ $('recLoad').onclick=()=>{
  const resign=s.result&&s.result.reason==='resign'?s.result:null;
  const acts=s.log.slice();let r=E.newGame({seed:s.seed,first:s.first});const stack=[r];
  for(const m of acts){r=E.apply(r,{from:(m/NN)|0,to:m%NN});stack.push(r);}
- hide('mdRec');start(r);G.stack=stack;
+ const was2p=!!G.p2;
+ hide('mdRec');start(r,was2p?{turning:false}:undefined);G.stack=stack;
  if(r.last)G.lastEx=E.explain(stack[stack.length-2].b,r.last.from,r.last.to)[0];
  if(resign){const n=Resign.mark(r,resign.by,resign.decisive);stack.push(n);G.s=n;G.busy=false;}   // 投了で終わった対局の再生
  render();
@@ -2037,11 +2187,11 @@ function refreshTitle(){
  el.classList.toggle('done',!!done);
  el.innerHTML=done?'<b>もう一度チュートリアル</b><small>クリア済み・7 ステップ</small>':'<b>チュートリアル</b><small>初めての方へ・7 ステップ</small>';
 }
-refreshTitle();
+refreshTitle();P2.refresh();
 buildFaces();buildSky();buildTitle();buildBoard();
 start(E.newGame({seed:1,first:1}));
 G.busy=true;        // タイトルを閉じるまで盤は触れない
-window.__origo={G,E,P,play,Snd,Tut,TUT,Ts,TSUME,TSUME_ANS,Resign,Preview,PvLink,Review};
+window.__origo={G,E,P,play,Snd,Tut,TUT,Ts,TSUME,TSUME_ANS,Resign,Preview,PvLink,Review,P2,V};
 ansMark();
 })();
 </script>
