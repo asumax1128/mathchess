@@ -34,7 +34,7 @@ const NAMES=['テオ','ミラ','セレス','ノクス'],LVN=['入門','標準','
   const playOut=async(lv,hd,hm)=>{
    await tap('#optLv button[data-v="'+lv+'"]');await tap('#stGo');await pg.waitForTimeout(300);
    let a,seen={think:false,ply:null};
-   for(let k=0;k<500;k++){a=await A();
+   for(let k=0;k<6000;k++){a=await A();   // 長い対局（100 手超）でも終局まで待つ
     if(a.busy&&!a.res&&a.turn!==a.human&&!seen.think){const t=await txt('#stText');if(t.includes('考えています'))seen.think=t;}
     if(seen.ply===null)seen.ply=await txt('#plyNo');
     if(a.res)break;if(a.busy){await pg.waitForTimeout(40);continue;}

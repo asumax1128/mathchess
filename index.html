@@ -235,6 +235,47 @@ body.ts-on #boardWrap{max-width:min(690px,calc(100dvh - 330px))}
 .nmrow input:focus{outline:none;border-color:var(--brass)}
 .title-pair .tut-entry{margin-bottom:0}
 #mdTsume .sheet{max-width:560px}
+/* 自分の詰め（一覧） */
+.ts-mine-tools{display:flex;gap:7px;margin:4px 0 8px}.ts-mine-tools .btn{flex:1}
+.ts-mine{display:flex;flex-direction:column;gap:6px}
+.ts-mi{display:flex;align-items:stretch;gap:6px}
+.ts-mi .ts-q{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:7px 26px 7px 12px;min-width:0}
+.ts-mi .ts-q b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.ts-mi .ts-q span{font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.ts-mi .del{flex:0 0 auto;padding:0 10px;font-size:12px;border-radius:8px}
+.ts-mi .del.sure{border-color:#c98a7a;color:#f0c4b8}
+.ts-empty{font-size:12px;color:var(--mute);margin:2px 0 4px}
+/* 詰めを作る（編集） */
+#mkCard{display:none;padding:11px 14px 10px;margin-bottom:10px}
+body.mk-on #mkCard{display:block}
+body.mk-on #status{display:none}
+body.mk-on #boardWrap{max-width:min(690px,calc(100dvh - 380px))}
+#mkCard .tc-step{white-space:nowrap;letter-spacing:.16em}
+.mk-pal{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0 4px}
+.mk-side{display:flex;gap:4px}
+.mk-side .btn,.mk-pc,.mk-seg .btn{padding:5px 9px;font-size:12px;letter-spacing:.04em}
+.mk-pcs{display:flex;gap:4px;flex-wrap:wrap}
+.mk-pc{display:flex;align-items:center;gap:4px;border:1px solid var(--hair);border-radius:8px;background:rgba(255,233,176,.02);color:var(--mute);padding:3px 7px 3px 3px}
+.mk-pc svg{width:26px;height:auto;display:block}
+.mk-pc[aria-pressed="true"],.mk-side .btn[aria-pressed="true"],.mk-seg .btn[aria-pressed="true"]{border-color:var(--brass);color:var(--brass-hi);background:rgba(255,233,176,.08)}
+.mk-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:5px 0}
+.mk-row>span{font-size:11.5px;color:var(--mute);letter-spacing:.08em}
+.mk-seg{display:flex;gap:4px}
+.mk-row input{flex:1;min-width:0;background:rgba(255,233,176,.04);border:1px solid var(--hair2);border-radius:7px;padding:6px 8px;color:var(--text);font:inherit;font-size:14px}
+.mk-row input:focus{outline:none;border-color:var(--brass)}
+.mk-names{display:grid;grid-template-columns:1.5fr 1fr;gap:6px}
+.mk-names label{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--mute);min-width:0}
+#mkMsg,#tcMsg{font-size:12.5px;line-height:1.55;color:var(--mute);min-height:1.5em}
+#mkMsg.good,#tcMsg.good{color:var(--gold)}#mkMsg.bad,#tcMsg.bad{color:#f0c4b8}
+.mk-bar{height:4px;border-radius:3px;background:rgba(255,233,176,.08);overflow:hidden;margin:4px 0}
+.mk-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--brass-lo),var(--brass-hi));transition:width .2s}
+.mk-bar[hidden]{display:none}
+#mkCard .tc-foot{flex-wrap:wrap;gap:6px}
+#mkCard .tc-foot .btn{padding:6px 12px;font-size:12px}
+.mk-code{display:flex;gap:6px;margin-top:6px}.mk-code[hidden]{display:none}
+.mk-code input,#tcIn{flex:1;min-width:0;font-family:ui-monospace,monospace;font-size:12px;background:rgba(0,0,0,.25);border:1px solid var(--hair2);border-radius:7px;color:var(--text);padding:7px 8px}
+#tcIn{width:100%;min-height:64px;resize:vertical}
+#mdTsCode .sheet{max-width:460px}
 .ts-sec{margin-top:14px}
 .ts-sec h3{margin-top:0}
 .ts-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
@@ -378,6 +419,8 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
   body.tut-on #boardWrap{max-width:min(100%,calc(100dvh - 230px))}
   body.ts-on #boardWrap{max-width:min(100%,calc(100dvh - 230px))}
   #tsCard{padding:9px 12px 8px;margin-bottom:8px}
+  #mkCard{padding:9px 12px 8px;margin-bottom:8px}
+  body.mk-on #boardWrap{max-width:min(100%,calc(100dvh - 250px))}
   .ts-q b{font-size:17px}
   .ts-tools{gap:4px}.ts-tools .chip{padding:3px 8px}
   #tsCard .tc-step{letter-spacing:.08em;font-size:11px}
@@ -454,17 +497,29 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
     </div>
     <div id="tsCard" class="plate" aria-live="polite">
       <div id="tsMain">
-      <div class="tc-head"><span class="tc-step">詰めORIGO　第 <b id="tsNo">1</b> 問</span><span class="ts-tools"><button class="chip" id="tsHint" aria-pressed="false">ヒント</button><button class="chip" id="tsList">一覧</button><button class="chip" id="tsQuit">やめる</button></span></div>
+      <div class="tc-head"><span class="tc-step" id="tsHead">詰めORIGO　第 <b id="tsNo">1</b> 問</span><span class="ts-tools"><button class="chip" id="tsHint" aria-pressed="false">ヒント</button><button class="chip" id="tsList">一覧</button><button class="chip" id="tsQuit">やめる</button></span></div>
       <div class="tc-title"><span id="tsTitle"></span><span class="ts-moves" id="tsMoves"></span></div>
       <div class="tc-text" id="tsText"></div>
       <div class="tc-foot"><span id="tsMsg"></span><button class="btn" id="tsAnswer">答え</button><button class="btn" id="tsReset">最初から</button><button class="btn pri" id="tsNext" hidden>次の問題</button></div>
       </div>
       <div id="tsAns" hidden>
-        <div class="tc-head"><span class="tc-step">答え　第 <b id="taNo">1</b> 問</span><span class="ts-tools"><button class="chip" id="taClose">閉じる</button></span></div>
+        <div class="tc-head"><span class="tc-step" id="taHead">答え　第 <b id="taNo">1</b> 問</span><span class="ts-tools"><button class="chip" id="taClose">閉じる</button></span></div>
         <table><thead><tr><th>手番</th><th>手</th><th></th></tr></thead><tbody id="taRows"></tbody></table>
         <ul class="ta-note"><li>初手：<b>この手だけが正解</b>です。</li><li>2 手目以降：<b>相手が最も粘った場合の手順の一例</b>です（あなたの手は唯一とは限りません）。</li></ul>
         <div class="tc-foot"><span id="taMsg"></span><button class="btn" id="taPrev">◀ 戻る</button><button class="btn pri" id="taNext">進む ▶</button></div>
       </div>
+    </div>
+    <div id="mkCard" class="plate">
+      <div class="tc-head"><span class="tc-step">詰めを作る</span><span class="ts-tools"><button class="chip" id="mkQuit">やめる</button></span></div>
+      <div class="mk-pal"><span class="mk-side" id="mkSide"><button class="btn" data-side="1" aria-pressed="true">金（解く側）</button><button class="btn" data-side="-1" aria-pressed="false">銀（相手）</button></span><span class="mk-pcs" id="mkPcs"></span></div>
+      <div class="tc-text" id="mkHow">駒を選んで点をタップすると置けます。置いた駒をタップすると取り除けます。解くのは金（盤の下側・手番の側）です。</div>
+      <div class="mk-row"><span>手数</span><span class="mk-seg" id="mkN"><button class="btn" data-v="1">あと 1 手</button><button class="btn" data-v="2">2 手</button><button class="btn" data-v="3">3 手</button></span>
+        <span>勝ち方</span><span class="mk-seg" id="mkType"><button class="btn" data-v="origin">原点制圧</button><button class="btn" data-v="mate">詰み</button></span></div>
+      <div class="mk-names"><label class="mk-row">題<input id="mkName" maxlength="12" placeholder="（任意）12 文字まで" autocomplete="off"></label><label class="mk-row">作者<input id="mkAuthor" maxlength="8" placeholder="（任意）" autocomplete="off"></label></div>
+      <div class="mk-bar" id="mkBar" hidden><i></i></div>
+      <div id="mkMsg" aria-live="polite"></div>
+      <div class="tc-foot"><button class="btn" id="mkClear">POLUS だけにする</button><button class="btn pri" id="mkCheck">確かめる</button><button class="btn" id="mkSave" hidden>自分の詰めに保存</button><button class="btn" id="mkCode" hidden>コードを出す</button></div>
+      <div class="mk-code" id="mkCodeRow" hidden><input id="mkCodeOut" readonly aria-label="詰めのコード"><button class="btn" id="mkCopy">コピー</button></div>
     </div>
     <div id="tutCard" class="plate" aria-live="polite">
       <div class="tc-head"><span class="tc-step">STEP <b id="tutNo">1</b> / 7</span><span class="tc-dots" id="tutDots"></span><button class="chip tc-quit" id="tutQuit">やめる</button></div>
@@ -585,8 +640,21 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
   <h2>詰めORIGO</h2>
   <p class="lead">「あと ○ 手」は自分の手の回数です。原点制圧は、原点に入って相手の応手をしのいだ時点で成立します。相手は勝ちを避ける応手を選びます。光る枠が今日の詰め、金の点は解いた問題、細い輪は答えを見た問題です。</p>
   <div id="tsSections"></div>
+  <div class="ts-sec"><h3>自分の詰め</h3>
+    <div class="ts-mine-tools"><button class="btn" id="tsMake">詰めを作る</button><button class="btn" id="tsImport">コードを読み込む</button></div>
+    <div class="ts-mine" id="tsMine"></div>
+  </div>
   <div class="row"><button class="btn" id="tsClose">タイトルへ</button></div>
   <p class="ts-whisper">答えは PRISM の順に眠る</p>
+</div></div>
+
+<div class="modal" id="mdTsCode"><div class="sheet">
+  <h2>詰めのコードを読み込む</h2>
+  <p class="lead">「ORIGOT1.」で始まるコードを貼り付けてください。読み込むときに、もう一度確かめます。</p>
+  <textarea id="tcIn" spellcheck="false" autocomplete="off" aria-label="詰めのコード"></textarea>
+  <div class="mk-bar" id="tcBar" hidden><i></i></div>
+  <div id="tcMsg" aria-live="polite"></div>
+  <div class="row"><button class="btn" id="tcClose">閉じる</button><button class="btn" id="tcEdit" hidden>編集画面で開く</button><button class="btn pri" id="tcLoad">読み込む</button><button class="btn pri" id="tcPlay" hidden>遊ぶ</button></div>
 </div></div>
 
 <div class="modal" id="mdTut"><div class="sheet">
@@ -805,6 +873,161 @@ function choose0(s,opt){
 return {N,H,NN,O,K,ROT,MIR,SCA,SPI,X,Y,idx,inb,RULES,TF,SETUP,VAL,W,gen,legal,inCheck,attacked,kingPos,explain,key,newGame,apply,rng,encode,decode,choose,evalB,evalW};
 })();
 /*ENGINE-END*/
+/*TSLIB-BEGIN*/
+// 詰めORIGO の自作問題の検証・答えの生成・コード。エンジンだけに依存する（画面の外。Web Worker でもそのまま動く）。
+//  - exact は sim/tsume-lib.js の厳密な探索（E.apply と E.legal だけを使う）をそのまま移したもの。足したのは返す口 first と reset だけ
+//  - 答えの手順は sim/tsume-answer-lib.js の generate と同じ規則（自分: 最短で勝てる手のうち並び順で先／相手: 最も長く粘る手）
+//  - 検証と答えは「少しずつ進む」ジェネレーター。yield で進み具合を返す（Worker でも、画面の側で少しずつ回しても同じ結果）
+const TsLib=(function(E){
+'use strict';
+function exact(E){
+ const NN=E.NN,fr=m=>(m/NN)|0,to=m=>m%NN;
+ const okRes=(res,S,allow)=>res.winner===S&&allow[res.reason];
+ // 記憶は「盤・手番・残り手数・同一局面の出現回数」すべてを鍵にするので、厳密さは変わらない
+ let memo=new Map();
+ function or(s,S,n,allow){
+  const k=E.key(s.b,s.turn)+'|'+n+'|'+JSON.stringify(s.rep);
+  if(memo.has(k))return memo.get(k);
+  let ok=false;
+  for(const m of E.legal(s.b,s.turn,s.rep))if(move(s,S,n,allow,m)){ok=true;break;}
+  memo.set(k,ok);return ok;
+ }
+ function move(s,S,n,allow,m){
+  const a=E.apply(s,{from:fr(m),to:to(m)});
+  if(a.result)return okRes(a.result,S,allow);
+  for(const r of E.legal(a.b,a.turn,a.rep)){
+   const c=E.apply(a,{from:fr(r),to:to(r)});
+   if(c.result){if(!okRes(c.result,S,allow))return false;continue;}
+   if(n<=1||!or(c,S,n-1,allow))return false;
+  }
+  return true;
+ }
+ return {
+  state(b){const s={b:b.slice(),turn:1,first:1,ply:0,seed:1,rep:{},result:null,last:null,log:[]};s.rep[E.key(s.b,1)]=1;return s;},
+  winningFirstMoves(s,n,allow){memo=new Map();return E.legal(s.b,s.turn,s.rep).filter(m=>move(s,s.turn,n,allow,m));},
+  canWin(s,n,allow){memo=new Map();return n>0&&or(s,s.turn,n,allow);},
+  first(s,n,allow,m){return move(s,s.turn,n,allow,m);},   // 追加: 初手 m 1 つの判定（記憶は reset まで共有）
+  reset(){memo=new Map();}                                  // 追加
+ };
+}
+const X=exact(E),NN=E.NN,fr=m=>(m/NN)|0,to=m=>m%NN;
+const ANY={mate:1,origin:1,stale:1},MATE={mate:1},ORIGIN={origin:1};
+const allowOf=type=>type==='mate'?MATE:ORIGIN;
+const T={K:E.K,R:E.ROT,M:E.MIR,S:E.SCA,P:E.SPI},C=['.','K','R','M','S','P'];
+// 盤の文字列（49 文字。'.' 空き、大文字＝解く側（+1・下側）、小文字＝相手。公式の問題 TSUME の b と同じ）
+function parse(str){
+ if(typeof str!=='string'||str.length!==NN)return null;
+ const b=new Array(NN).fill(0);
+ for(let i=0;i<NN;i++){const c=str[i];if(c==='.')continue;const t=T[c.toUpperCase()];if(!t)return null;b[i]=(c===c.toUpperCase()?1:-1)*t;}
+ return b;
+}
+function format(b){let s='';for(let i=0;i<NN;i++){const v=b[i];s+=v?(v>0?C[v]:C[-v].toLowerCase()):'.';}return s;}
+const mvArr=m=>[E.X[fr(m)],E.Y[fr(m)],E.X[to(m)],E.Y[to(m)]];
+// 局面の形の条件（読まずに分かるもの）。違反の一覧を返す
+function shape(b){
+ const err=[],cnt={1:0,'-1':0};let n=0;
+ for(let i=0;i<NN;i++){const v=b[i];if(!v)continue;n++;if(Math.abs(v)===E.K)cnt[Math.sign(v)]++;}
+ if(cnt[1]!==1)err.push({k:'king',side:1,n:cnt[1]});
+ if(cnt[-1]!==1)err.push({k:'king',side:-1,n:cnt[-1]});
+ if(n<2)err.push({k:'few'});
+ if(!err.length){
+  if(E.inCheck(b,1))err.push({k:'check'});                        // 解く側の POLUS が最初から狙われている
+  else if(E.attacked(b,E.kingPos(b,-1),1))err.push({k:'oppcheck'}); // 相手の POLUS を、最初の手で取れてしまう
+ }
+ return err;
+}
+// ---- 検証（公式の 24 問と同じ品質条件。sim/tsume-check.js と同じ判定）
+//  条件1 あと n 手以内に、どの応手に対しても、指定の勝ち方の勝ちが強制される
+//  条件2 勝ちに届く初手（勝ち方を問わない）がちょうど 1 つ
+//  手数  n−1 手以内では勝てない（勝てるなら、いちばん短い手数を返す）
+// 進み具合: yield {phase, done, total}。最後に return {ok, ...}
+function* verify(b,n,type){
+ const t0=Date.now(),sh=shape(b);
+ if(sh.length)return {ok:false,reason:'shape',errs:sh,ms:0};
+ const s=X.state(b),allow=allowOf(type),ms=E.legal(s.b,1,s.rep);
+ if(!ms.length)return {ok:false,reason:'nomove',ms:Date.now()-t0};
+ // 1) いちばん短い勝ちの手数（勝ち方を問わない）
+ let min=0;
+ for(let k=1;k<=n;k++){yield {phase:'short',done:k-1,total:n};if(X.canWin(s,k,ANY)){min=k;break;}}
+ if(!min){
+  return {ok:false,reason:'nowin',ms:Date.now()-t0};
+ }
+ if(min<n)return {ok:false,reason:'short',min,ms:Date.now()-t0};
+ // 2) 指定の勝ち方で勝ちきれるか
+ yield {phase:'type',done:0,total:1};
+ if(!X.canWin(s,n,allow)){
+  const otherType=type==='mate'?'origin':'mate',other=X.canWin(s,n,allowOf(otherType));
+  return {ok:false,reason:'type',other:other?otherType:null,ms:Date.now()-t0};
+ }
+ // 3) 勝ちに届く初手（勝ち方を問わない）を全部数える。初手 1 つごとに進み具合を返す
+ X.reset();const wins=[];
+ for(let i=0;i<ms.length;i++){yield {phase:'first',done:i,total:ms.length};if(X.first(s,n,ANY,ms[i]))wins.push(ms[i]);}
+ if(wins.length!==1)return {ok:false,reason:'multi',count:wins.length,firsts:wins.map(mvArr),ms:Date.now()-t0};
+ // 4) その初手で、指定の勝ち方が強制される
+ X.reset();
+ if(!X.first(s,n,allow,wins[0]))return {ok:false,reason:'type',other:null,ms:Date.now()-t0};
+ return {ok:true,first:mvArr(wins[0]),ms:Date.now()-t0};
+}
+// ---- 答えの手順（sim/tsume-answer-lib.js の generate と同じ規則）。yield で進み具合。return {line, alt, end}
+function* answer(b,n,type){
+ const allow=allowOf(type);let s=X.state(b),used=0;const line=[],alt=[];
+ function* dist(a,rem){if(a.result)return a.result.winner===1?0:-1;for(let k=1;k<=rem;k++){if(X.canWin(a,k,ANY))return k;}return -1;}
+ for(let guard=0;guard<20;guard++){
+  yield {phase:'mine',done:used,total:n};
+  let mine=null;
+  for(let k=1;k<=n-used;k++){const W=X.winningFirstMoves(s,k,allow);if(W.length){mine={m:W[0],count:W.length};break;}}
+  if(!mine)return null;
+  line.push(mvArr(mine.m));alt.push(mine.count);
+  s=E.apply(s,{from:fr(mine.m),to:to(mine.m)});used++;
+  if(s.result)break;
+  yield {phase:'reply',done:used,total:n};
+  let best=null,bd=-2;
+  for(const m of E.legal(s.b,s.turn,s.rep)){const a=E.apply(s,{from:fr(m),to:to(m)}),d=yield* dist(a,n-used);const sc=d<0?99:d;if(sc>bd){bd=sc;best=m;}}
+  if(best===null)return null;
+  line.push(mvArr(best));s=E.apply(s,{from:fr(best),to:to(best)});
+  if(s.result)break;
+ }
+ return s.result?{line,alt,end:s.result.reason}:null;
+}
+// ---- 自作問題のコード（ORIGOT1.）
+//  ORIGOT1.<手数><勝ち方>.<盤>.<題>.<作者>.<検査>
+//   手数: 1〜3、勝ち方: o（原点制圧）/ m（詰み）
+//   盤: 49 文字の盤（TSUME の b と同じ）を、'.' の連なりだけ数字 1〜9 に縮めたもの
+//   題・作者: UTF-8 を base64url（'=' なし）。空なら空
+//   検査: それより前の全体の FNV-1a（32 ビット）を 36 進 6 桁。欠け・書き換えを見つける
+const PFX='ORIGOT1.',B64='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+function utf8(s){const o=[];for(const ch of s){let c=ch.codePointAt(0);if(c<128)o.push(c);else if(c<2048)o.push(192|c>>6,128|c&63);else if(c<65536)o.push(224|c>>12,128|c>>6&63,128|c&63);else o.push(240|c>>18,128|c>>12&63,128|c>>6&63,128|c&63);}return o;}
+function unutf8(a){let s='',i=0;while(i<a.length){const c=a[i++];let cp;
+ if(c<128)cp=c;else if(c>>5===6)cp=(c&31)<<6|a[i++]&63;else if(c>>4===14)cp=(c&15)<<12|(a[i++]&63)<<6|a[i++]&63;else cp=(c&7)<<18|(a[i++]&63)<<12|(a[i++]&63)<<6|a[i++]&63;
+ if(cp===undefined||isNaN(cp)||cp>0x10FFFF)return null;s+=String.fromCodePoint(cp);}return s;}
+function b64(s){const a=utf8(s);let o='';for(let i=0;i<a.length;i+=3){const n=a[i]<<16|(a[i+1]||0)<<8|(a[i+2]||0);o+=B64[n>>18&63]+B64[n>>12&63]+(i+1<a.length?B64[n>>6&63]:'')+(i+2<a.length?B64[n&63]:'');}return o;}
+function unb64(s){if(!/^[A-Za-z0-9_-]*$/.test(s)||s.length%4===1)return null;const a=[];for(let i=0;i<s.length;i+=4){const q=[0,1,2,3].map(k=>i+k<s.length?B64.indexOf(s[i+k]):0);const n=q[0]<<18|q[1]<<12|q[2]<<6|q[3];a.push(n>>16&255);if(i+2<s.length)a.push(n>>8&255);if(i+3<s.length)a.push(n&255);}return unutf8(a);}
+function fnv(s){let h=0x811c9dc5;for(const c of utf8(s)){h^=c;h=Math.imul(h,0x01000193)>>>0;}return h.toString(36).padStart(7,'0').slice(-6);}
+function rle(str){return str.replace(/\.{1,9}/g,m=>String(m.length));}
+function unrle(s){return /^[1-9KRMSPkrmsp]*$/.test(s)?s.replace(/[1-9]/g,d=>'.'.repeat(+d)):null;}
+const LIM={name:12,author:8};
+const clip=(t,k)=>[...String(t||'').replace(/[\u0000-\u001f\u007f]/g,'').trim()].slice(0,k).join('');
+function encode(p){
+ const body=PFX+p.n+(p.type==='mate'?'m':'o')+'.'+rle(p.b)+'.'+b64(clip(p.name,LIM.name))+'.'+b64(clip(p.author,LIM.author));
+ return body+'.'+fnv(body);
+}
+// 戻り値 {ok:true, p:{n,type,b,name,author}} か {ok:false, why:'kifu'|'other'|'broken'|'shape'}
+function decode(str){
+ const t=String(str||'').replace(/\s+/g,'');
+ if(/^ORIGO1\./.test(t))return {ok:false,why:'kifu'};
+ if(t.indexOf(PFX)!==0)return {ok:false,why:'other'};
+ const p=t.split('.');if(p.length!==6)return {ok:false,why:'broken'};
+ const body=p.slice(0,5).join('.');if(fnv(body)!==p[5])return {ok:false,why:'broken'};
+ const m=/^([123])([om])$/.exec(p[1]);if(!m)return {ok:false,why:'broken'};
+ const bs=unrle(p[2]),name=unb64(p[3]),author=unb64(p[4]);
+ if(bs===null||bs.length!==NN||name===null||author===null)return {ok:false,why:'broken'};
+ const b=parse(bs);if(!b)return {ok:false,why:'broken'};
+ return {ok:true,p:{n:+m[1],type:m[2]==='m'?'mate':'origin',b:bs,name:clip(name,LIM.name),author:clip(author,LIM.author)}};
+}
+const idOf=p=>'u'+fnv(p.n+p.type+p.b);       // 同じ局面・手数・勝ち方なら同じ問題（名前は問わない）
+return {X,ANY,MATE,ORIGIN,parse,format,shape,verify,answer,encode,decode,idOf,clip,LIM,PFX};
+})(Engine);
+/*TSLIB-END*/
 </script>
 <script>
 (function(){
@@ -1297,7 +1520,7 @@ const Review=(function(E){
 /*REVIEW-END*/
 
 // ---------- 状態 ----------
-const G={s:null,stack:[],human:1,sel:-1,ro:false,moves:[],hot:-1,busy:false,lastEx:null,tut:null,ts:null,pv:null,rv:null,p2:null};
+const G={mk:null,s:null,stack:[],human:1,sel:-1,ro:false,moves:[],hot:-1,busy:false,lastEx:null,tut:null,ts:null,pv:null,rv:null,p2:null};
 const svg=$('board');
 const metal=side=>side===G.s.first?'au':'ag';   // 金＝先手、銀＝後手
 const fmt=(x,y)=>{
@@ -1421,9 +1644,9 @@ function renderSide(){
  $('btUndo').disabled=G.p2?(G.busy||!!s.result||s.ply<2||!!G.rv):(G.busy||G.stack.length<2||!!G.tut||!!G.ts||!!G.rv);
  $('tgRot').hidden=!G.p2;$('btFlip').hidden=!G.p2;$('btFlip').disabled=G.busy||!!G.rv;
  $('tsAnswer').disabled=G.busy||!!(G.ts&&G.ts.answer);
- $('btResign').hidden=!!(G.tut||G.ts);   // チュートリアルと詰めORIGO には「やめる」がある
+ $('btResign').hidden=!!(G.tut||G.ts||G.mk);   // チュートリアルと詰めORIGO には「やめる」がある
  $('btResign').disabled=G.busy||!!s.result||(!G.p2&&s.turn!==G.human)||!!G.rv;
- $('btRec').disabled=!!G.tut||!!G.ts||!!G.rv;   // チュートリアルと詰めORIGO は棋譜コードの対象外（ふりかえり中も）
+ $('btRec').disabled=!!G.tut||!!G.ts||!!G.rv||!!G.mk;   // チュートリアルと詰めORIGO は棋譜コードの対象外（ふりかえり中も）
  const selT=G.sel>=0?Math.abs(s.b[G.sel]):0;
  document.querySelectorAll('.leg').forEach(el=>el.classList.toggle('on',+el.dataset.t===selT));
 }
@@ -1460,6 +1683,7 @@ function hit(e){
 }
 svg.addEventListener('click',e=>{
  Snd.init();
+ if(G.mk){Mk.tap(e);return;}                 // 詰めを作る: 駒を置く・取り除く
  if(G.rv)return;                            // ふりかえり中は盤に触れても何もしない
  if(LP.eat){LP.eat=false;return;}            // 長押しが成立したタップは、離しても手を確定しない
  if(G.tut){Tut.click(hit(e));return;}
@@ -1774,6 +1998,7 @@ function start(s,p2){
  G.tut=null;document.body.classList.remove('tut-on');$('formula').classList.remove('tut-glow');
  G.ts=null;document.body.classList.remove('ts-on');
  G.rv=null;document.body.classList.remove('rv-on');
+ if(G.mk)Mk.drop();
  G.p2=p2||null;G.human=p2?s.turn:1;
  PVH.shown=false;pvHintHide();               // 囁きは 1 局に 1 回まで
  viewSetNow(p2&&P.rot&&s.turn<0?-1:1);
@@ -1926,6 +2151,8 @@ $('stTut').onclick=()=>{Snd.init();hide('mdStart');Tut.start();};
 $('stTsume').onclick=()=>{Snd.init();Ts.list();};
 $('stToday').onclick=()=>{Snd.init();hide('mdStart');Ts.start(Ts.today());};
 $('tsClose').onclick=()=>{hide('mdTsume');show('mdStart');};
+$('tsMake').onclick=()=>{Snd.init();Mk.open(null);};
+$('tsImport').onclick=()=>{Snd.init();hide('mdTsume');TsCode.open();};
 // ---- 答えモード: タイトルの五駒を PRISM の順（POLUS → ROTA → IMAGO → SPIRA → MAGNA）にタップすると入る／切れる
 const AnsKey={k:0};
 // 発動のカットイン: 暗い帯に 5 つのコインが順に光り（音も 5 音）、「隠しモード発動！」。タップで閉じる／約 2 秒で自動で消える
@@ -1995,6 +2222,7 @@ $('recLoad').onclick=()=>{
  if(G.busy)return;
  // 手順を最初から適用し直して局面を復元する（決定的に再現できることの確認にもなる）
  let s=Resign.decode($('recIn').value);
+ if(!s&&/^\s*ORIGOT1\./.test($('recIn').value)){$('recMsg').textContent='これは詰めのコードです。詰めORIGO の「自分の詰め」の「コードを読み込む」から読み込めます';return;}
  if(!s){$('recMsg').textContent='コードを読み取れませんでした';return;}
  const resign=s.result&&s.result.reason==='resign'?s.result:null;
  const acts=s.log.slice();let r=E.newGame({seed:s.seed,first:s.first});const stack=[r];
@@ -2189,6 +2417,162 @@ const TSUME_ANS=[
   {id:24,line:[[1,-1,3,1],[-1,3,-1,2],[1,-2,2,-3],[-2,3,2,-3],[3,-2,2,-3]],alt:[1,2,1],end:'mate'}
 ];
 /*TSUMEANS-END*/
+// ---- 詰めの検証・答えの実行。TsLib のジェネレーターを Web Worker で回し、進み具合を返す。
+//      Worker が使えない環境では、同じジェネレーターを画面の側で少しずつ回す（結果は同じ。読みの最中は少し固まる）
+const TsJob=(function(){
+ let cur=null;
+ function source(){
+  const t=[...document.scripts].map(x=>x.textContent).find(x=>x.indexOf('/*TSLIB-BEGIN*/')>=0);
+  const cut=n=>t.split('/*'+n+'-BEGIN*/')[1].split('/*'+n+'-END*/')[0];
+  return cut('ENGINE')+'\n'+cut('TSLIB')+'\n'+'('+loop.toString()+')(self);';
+ }
+ // Worker の中身: {kind, b, n, type} を受けて、進み具合と結果を返す
+ function loop(self){
+  self.onmessage=e=>{const d=e.data,b=TsLib.parse(d.b),g=TsLib[d.kind](b,d.n,d.type),t0=Date.now();let r,last=0;
+   for(;;){r=g.next();if(r.done)break;const now=Date.now();if(now-last>120){last=now;self.postMessage({prog:r.value});}}
+   self.postMessage({done:true,value:r.value,ms:Date.now()-t0});};
+ }
+ const pctOf=(kind,v,n)=>{if(!v)return 0;if(kind==='answer')return Math.round(100*v.done/Math.max(1,v.total));
+  if(v.phase==='short')return Math.round(10*v.done/Math.max(1,v.total));if(v.phase==='type')return 12;return 15+Math.round(85*v.done/Math.max(1,v.total));};
+ function run(kind,q,onProg){
+  cancel();
+  return new Promise(res=>{
+   const job={kind,t0:performance.now(),res,w:null,timer:0};cur=job;
+   const prog=v=>{if(cur===job&&onProg)onProg({pct:pctOf(kind,v,q.n),phase:v&&v.phase,done:v&&v.done,total:v&&v.total,sec:(performance.now()-job.t0)/1000});};
+   const fin=(value,ms)=>{if(cur!==job)return;cur=null;if(job.w)job.w.terminate();res({value,ms,wall:Math.round(performance.now()-job.t0),worker:!!job.w});};
+   try{
+    const url=URL.createObjectURL(new Blob([source()],{type:'text/javascript'}));
+    job.w=new Worker(url);URL.revokeObjectURL(url);
+    job.w.onmessage=e=>{if(e.data.done)fin(e.data.value,e.data.ms);else prog(e.data.prog);};
+    job.w.onerror=()=>{job.w=null;local();};
+    job.w.postMessage({kind,b:q.b,n:q.n,type:q.type});
+   }catch(err){job.w=null;local();}
+   function local(){       // 画面の側で回す（Worker が使えないとき）
+    const g=TsLib[kind](TsLib.parse(q.b),q.n,q.type),t0=Date.now();
+    const tick=()=>{if(cur!==job)return;const s0=performance.now();let r;
+     for(;;){r=g.next();if(r.done){fin(r.value,Date.now()-t0);return;}if(performance.now()-s0>30)break;}
+     prog(r.value);setTimeout(tick,0);};
+    setTimeout(tick,0);
+   }
+  });
+ }
+ function cancel(){if(!cur)return;const j=cur;cur=null;if(j.w)j.w.terminate();j.res(null);}
+ return {run,cancel,busy:()=>!!cur};
+})();
+// ---- 詰めを作る（編集画面）。盤に駒を置き、手数と勝ち方を選んで確かめる。合格した問題だけ保存・コードの発行ができる
+const Mk=(function(){
+ const T=TsLib,KIND=[E.K,E.ROT,E.MIR,E.SCA,E.SPI];
+ const REASON={
+  nowin:p=>'勝ちきれません：あと '+p.n+' 手では、相手のどの応手にも勝ちきることはできません。',
+  short:(p,r)=>'もっと短い手数で解けます：あと '+r.min+' 手で勝てます（勝ち方を問わず）。手数を '+r.min+' にしてください。',
+  multi:(p,r)=>'初手が複数あります：勝ちに届く初手が '+r.count+' 個あります（例：'+r.firsts.slice(0,3).map(mvName(p)).join('、')+(r.count>3?' ほか':'')+'）。正解の初手が 1 つだけになるようにしてください。',
+  type:(p,r)=>'指定の勝ち方（'+(p.type==='mate'?'詰み':'原点制圧')+'）では勝ちきれません。'+(r.other?(r.other==='mate'?'詰み':'原点制圧')+'なら、あと '+p.n+' 手で勝ちきれます。':''),
+  nomove:()=>'解く側（金）に指せる手がありません。'
+ };
+ function shapeText(errs){return errs.map(e=>e.k==='king'?(e.side>0?'金（解く側）':'銀（相手）')+'の POLUS を'+(e.n===0?' 1 つ置いてください':'ちょうど 1 つにしてください（いま '+e.n+' つ）'):
+  e.k==='few'?'駒を 2 つ以上置いてください':e.k==='check'?'解く側（金）の POLUS が、最初から相手に狙われています':'相手（銀）の POLUS を最初の一手で取れてしまいます。狙われていない局面にしてください').join('。')+'。';}
+ const mvName=p=>m=>{const b=T.parse(p.b),f=E.idx(m[0],m[1]),t=E.idx(m[2],m[3]);return NAME[Math.abs(b[f])]+' '+zf(f)+' → '+zf(t);};
+ function why(p,r){return r.reason==='shape'?shapeText(r.errs):REASON[r.reason](p,r);}
+ function open(p){
+  const st=p?T.parse(p.b):null,b=st||(()=>{const x=new Array(NN).fill(0);x[E.idx(0,-3)]=E.K;x[E.idx(0,3)]=-E.K;return x;})();
+  const s={b,turn:1,first:1,ply:0,seed:1,rep:{},result:null,last:null,log:[]};s.rep[E.key(b,1)]=1;
+  hide('mdTsume');hide('mdTsCode');hide('mdStart');
+  start(s);
+  G.mk={side:1,t:E.ROT,n:p?p.n:1,type:p?p.type:'origin',result:null,code:''};
+  document.body.classList.add('mk-on');
+  $('mkName').value=p?p.name||'':'';$('mkAuthor').value=p?p.author||'':store.get('tsAuthor','');
+  palette();seg();msg(p&&p.why?p.why:'','bad');showResult();render();
+ }
+ function drop(){TsJob.cancel();G.mk=null;document.body.classList.remove('mk-on');}
+ function palette(){
+  const m=G.mk;
+  document.querySelectorAll('#mkSide .btn').forEach(x=>x.setAttribute('aria-pressed',+x.dataset.side===m.side));
+  $('mkPcs').innerHTML=KIND.map(t=>'<button class="mk-pc" data-t="'+t+'" aria-pressed="'+(t===m.t)+'" title="'+NAME[t]+'">'+coinSvg(m.side>0?'au':'ag',t)+NAME[t]+'</button>').join('');
+ }
+ function seg(){const m=G.mk;document.querySelectorAll('#mkN .btn').forEach(x=>x.setAttribute('aria-pressed',+x.dataset.v===m.n));document.querySelectorAll('#mkType .btn').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v===m.type));}
+ function msg(t,cls){$('mkMsg').textContent=t||'';$('mkMsg').className=cls||'';}
+ function bar(pct){const b=$('mkBar');if(pct===null){b.hidden=true;return;}b.hidden=false;b.firstChild.style.width=pct+'%';}
+ function showResult(){const ok=!!(G.mk&&G.mk.result&&G.mk.result.ok);$('mkSave').hidden=!ok;$('mkCode').hidden=!ok;if(!ok){$('mkCodeRow').hidden=true;}$('mkCheck').disabled=TsJob.busy();}
+ function changed(){const m=G.mk;if(!m)return;if(TsJob.busy())TsJob.cancel();bar(null);m.result=null;m.code='';showResult();msg('');}
+ function prob(){const m=G.mk;return {n:m.n,type:m.type,b:T.format(G.s.b),name:T.clip($('mkName').value,T.LIM.name),author:T.clip($('mkAuthor').value,T.LIM.author)};}
+ // 盤のタップ: 駒があれば取り除く、なければ選んだ駒を置く（POLUS はその側に 1 つだけ。置き直すと前の POLUS は消える）
+ function tap(e){
+  const m=G.mk;if(!m)return;
+  const r=svg.getBoundingClientRect(),vx=(e.clientX-r.left)/r.width*760,vy=(e.clientY-r.top)/r.height*760;
+  const x=Math.round((vx-380)/(90*V.s)),y=Math.round((380-vy)/(90*V.s));
+  if(Math.abs(x)>3||Math.abs(y)>3||Math.hypot(px(x)-vx,py(y)-vy)>44)return;
+  const i=E.idx(x,y),b=G.s.b.slice();
+  if(b[i]){b[i]=0;Snd.fx.deselect();}
+  else{if(m.t===E.K){const k=E.kingPos(b,m.side);if(k>=0)b[k]=0;}b[i]=m.side*m.t;Snd.fx.select();}
+  const s={b,turn:1,first:1,ply:0,seed:1,rep:{},result:null,last:null,log:[]};s.rep[E.key(b,1)]=1;
+  G.s=s;G.stack=[s];changed();render();
+ }
+ function check(){
+  const m=G.mk;if(!m||TsJob.busy())return;
+  const p=prob(),sh=T.shape(T.parse(p.b));
+  if(sh.length){m.result={ok:false};msg(shapeText(sh),'bad');showResult();return;}
+  msg('確かめています…','');bar(0);
+  const job=TsJob.run('verify',p,pr=>{if(G.mk!==m)return;bar(pr.pct);msg('確かめています… '+(pr.phase==='first'?'初手 '+pr.done+' / '+pr.total:pr.phase==='short'?'手数':'勝ち方')+'（'+pr.sec.toFixed(0)+' 秒）','');});
+  showResult();
+  job.then(r=>{
+   if(G.mk!==m||!r)return;bar(null);const v=r.value;m.result=v;m.ms=r.wall;
+   if(v.ok){m.first=v.first;msg('合格：初手は 1 つだけで、あと '+p.n+' 手以内に必ず'+(p.type==='mate'?'詰み':'原点制圧')+'で勝てます（確かめた時間 '+(r.wall/1000).toFixed(1)+' 秒）。','good');Snd.fx.win();}
+   else msg(why(p,v),'bad');
+   showResult();
+  });
+ }
+ function save(){
+  const m=G.mk;if(!m||!m.result||!m.result.ok)return;
+  const p=prob(),r=Ts.mineAdd(p,m.first);store.set('tsAuthor',p.author);
+  msg(r.dup?'自分の詰めを更新しました（同じ局面・手数・勝ち方の問題）。':'自分の詰めに保存しました。','good');
+ }
+ function code(){
+  const m=G.mk;if(!m||!m.result||!m.result.ok)return;
+  $('mkCodeOut').value=TsLib.encode(prob());$('mkCodeRow').hidden=false;$('mkCodeOut').select();
+ }
+ $('mkSide').addEventListener('click',e=>{const b=e.target.closest('[data-side]');if(!b||!G.mk)return;G.mk.side=+b.dataset.side;palette();});
+ $('mkPcs').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(!b||!G.mk)return;G.mk.t=+b.dataset.t;palette();});
+ $('mkN').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b||!G.mk)return;G.mk.n=+b.dataset.v;seg();changed();});
+ $('mkType').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b||!G.mk)return;G.mk.type=b.dataset.v;seg();changed();});
+ $('mkName').addEventListener('input',()=>{if(G.mk){$('mkCodeRow').hidden=true;}});
+ $('mkAuthor').addEventListener('input',()=>{if(G.mk){$('mkCodeRow').hidden=true;}});
+ $('mkClear').onclick=()=>{if(!G.mk)return;const b=new Array(NN).fill(0);b[E.idx(0,-3)]=E.K;b[E.idx(0,3)]=-E.K;const s={b,turn:1,first:1,ply:0,seed:1,rep:{},result:null,last:null,log:[]};s.rep[E.key(b,1)]=1;G.s=s;G.stack=[s];changed();render();};
+ $('mkCheck').onclick=()=>{Snd.init();check();};
+ $('mkSave').onclick=()=>{Snd.init();save();};
+ $('mkCode').onclick=()=>{Snd.init();code();};
+ $('mkCopy').onclick=()=>{const v=$('mkCodeOut').value;$('mkCodeOut').select();const done=()=>msg('コードをコピーしました。1 行のまま渡してください。','good');
+  try{navigator.clipboard.writeText(v).then(done,()=>{document.execCommand('copy');done();});}catch(err){try{document.execCommand('copy');done();}catch(e2){}}};
+ $('mkQuit').onclick=()=>{Snd.init();drop();G.busy=true;Ts.list();};
+ return {open,drop,tap,check,why,shapeText};
+})();
+// ---- コードの読み込み（ORIGOT1.）。読み込むときにも検証し、合格したら自分の詰めに入れて遊べる。不合格なら理由と編集画面へ
+const TsCode=(function(){
+ let pend=null;
+ const NG={kifu:'これは棋譜コード（ORIGO1.）です。棋譜コードは、対局の画面の「棋譜コード」から読み込めます。',
+  other:'詰めのコードは「ORIGOT1.」で始まります。コードを全部コピーできているか、確かめてください。',
+  broken:'コードの一部が欠けているか、変わっているようです。もう一度、全部をコピーして貼り付けてみてください。'};
+ function msg(t,c){$('tcMsg').textContent=t||'';$('tcMsg').className=c||'';}
+ function bar(p){const b=$('tcBar');if(p===null){b.hidden=true;return;}b.hidden=false;b.firstChild.style.width=p+'%';}
+ function open(){TsJob.cancel();pend=null;$('tcIn').value='';msg('');bar(null);$('tcEdit').hidden=true;$('tcPlay').hidden=true;$('tcLoad').hidden=false;$('tcLoad').disabled=false;show('mdTsCode');}
+ function load(){
+  const d=TsLib.decode($('tcIn').value);$('tcEdit').hidden=true;$('tcPlay').hidden=true;
+  if(!d.ok){msg(NG[d.why],'bad');return;}
+  const p=d.p,sh=TsLib.shape(TsLib.parse(p.b));pend={p};
+  if(sh.length){pend.why=Mk.shapeText(sh);msg('この問題は、そのままでは遊べません：'+pend.why+' 編集画面で開いて直せます。','bad');$('tcEdit').hidden=false;return;}
+  $('tcLoad').disabled=true;msg('「'+(p.name||'無題')+'」（あと '+p.n+' 手・'+(p.type==='mate'?'詰み':'原点制圧')+'）を確かめています…','');bar(0);
+  const me=pend;
+  TsJob.run('verify',p,pr=>{if(pend!==me)return;bar(pr.pct);msg('「'+(p.name||'無題')+'」を確かめています… '+pr.pct+'%（'+pr.sec.toFixed(0)+' 秒）','');}).then(r=>{
+   if(pend!==me||!r)return;bar(null);$('tcLoad').disabled=false;const v=r.value;
+   if(v.ok){const a=Ts.mineAdd(p,v.first);me.id=a.q.id;msg('合格：「'+(p.name||'無題')+'」'+(p.author?'（作：'+p.author+'）':'')+'を自分の詰めに'+(a.dup?'入れ直しました':'入れました')+'。','good');$('tcLoad').hidden=true;$('tcPlay').hidden=false;Ts.mineList();}
+   else{me.why=Mk.why(p,v);msg('この問題は、条件を満たしていないため登録しませんでした：'+me.why+' 編集画面で開いて直せます。','bad');$('tcEdit').hidden=false;}
+  });
+ }
+ $('tcLoad').onclick=()=>{Snd.init();load();};
+ $('tcPlay').onclick=()=>{Snd.init();if(pend&&pend.id){hide('mdTsCode');Ts.playMine(pend.id);}};
+ $('tcEdit').onclick=()=>{Snd.init();if(pend){const p=Object.assign({},pend.p,{why:pend.why});hide('mdTsCode');Mk.open(p);}};
+ $('tcClose').onclick=()=>{TsJob.cancel();pend=null;hide('mdTsCode');$('tsMine')&&Ts.mineList();show('mdTsume');};
+ return {open,load};
+})();
 const Ts=(function(){
  const T={K:E.K,R:E.ROT,M:E.MIR,S:E.SCA,P:E.SPI},TYPE={mate:'詰み',origin:'原点制圧'};
  const at=(x,y)=>E.idx(x,y),fr=m=>(m/NN)|0,to=m=>m%NN;
@@ -2236,8 +2620,8 @@ const Ts=(function(){
  }
  function today(){const d=new Date(),n=Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e5);return (n*7)%TSUME.length;}
  function card(){
-  const g=G.ts,q=TSUME[g.i];
-  $('tsNo').textContent=q.id;
+  const g=G.ts,q=g.q;
+  if(g.mine)$('tsHead').innerHTML='自分の詰め　<b>'+escH(q.name||'無題')+'</b>';else $('tsHead').innerHTML='詰めORIGO　第 <b id="tsNo">'+q.id+'</b> 問';
   $('tsTitle').textContent='あと '+q.n+' 手 · '+TYPE[q.type];
   $('tsMoves').innerHTML=Array.from({length:q.n},(_,k)=>'<i class="'+(k<g.used?'used':'')+'"></i>').join('');
   $('tsText').textContent=q.type==='mate'?'あなたの手 '+q.n+' 回以内に、相手の POLUS を詰めてください。':'あなたの手 '+q.n+' 回以内に、原点制圧で勝ってください。';
@@ -2248,9 +2632,11 @@ const Ts=(function(){
   $('tsMain').hidden=!!g.answer;$('tsAns').hidden=!g.answer;$('tsAnswer').disabled=G.busy;
   $('tsAnswer').hidden=!store.get('ansMode',false);   // 答えモード（タイトルで PRISM の順に駒をタップ）のときだけ
  }
- function begin(i){
-  start(initial(TSUME[i]));
-  G.ts={i,used:0,state:'play',hint:false,clearText:''};document.body.classList.add('ts-on');
+ function begin(i){beginQ(TSUME[i],i,q=>q.id);}
+ // 問題 q で始める。i は公式の番号（自作は −1）、key は記録（解いた・答えを見た）の鍵
+ function beginQ(q,i,keyOf){
+  start(initial(q));
+  G.ts={q,i,key:keyOf(q),mine:i<0,used:0,state:'play',hint:false,clearText:''};document.body.classList.add('ts-on');
   $('fmT').textContent='駒に触れると、跳べる点と変換が表示されます';$('fmF').innerHTML='z′ = c + w(z − c)';
   card();render();
  }
@@ -2262,8 +2648,30 @@ const Ts=(function(){
    h+='</div></div>';
   }
   $('tsSections').innerHTML=h;
+  mineList();
   hide('mdStart');show('mdTsume');
  }
+ // ---- 自分の詰め（この端末に保存。公式とは分ける）
+ const mine=()=>store.get('tsMine',[]);
+ function mineList(){
+  const sv=solved(),se=seen(),L=mine();
+  $('tsMine').innerHTML=L.length?L.map(q=>'<div class="ts-mi" data-id="'+q.id+'"><button class="ts-q'+(sv[q.id]?' done':se[q.id]?' seen':'')+'" data-mine="'+q.id+'"><b>'+escH(q.name||'無題')+'</b><span>あと '+q.n+' 手 · '+TYPE[q.type]+(q.author?' · '+escH(q.author):'')+'</span></button><button class="btn del" data-del="'+q.id+'" aria-label="削除">削除</button></div>').join(''):'<p class="ts-empty">まだありません。「詰めを作る」か「コードを読み込む」で増やせます。</p>';
+ }
+ function mineAdd(p,first){      // 合格した問題だけを入れる。同じ問題（局面・手数・勝ち方）は上書き
+  const L=mine(),id=TsLib.idOf(p),q={id,n:p.n,type:p.type,b:p.b,name:p.name||'',author:p.author||'',first};
+  const k=L.findIndex(x=>x.id===id);if(k>=0)L[k]=q;else L.push(q);store.set('tsMine',L);return {q,dup:k>=0};
+ }
+ function mineDel(id){
+  store.set('tsMine',mine().filter(x=>x.id!==id));
+  const sv=solved(),se=seen();if(sv[id]){delete sv[id];store.set('tsSolved',sv);}if(se[id]){delete se[id];store.set('tsSeen',se);}
+  mineList();
+ }
+ function playMine(id){const L=mine(),q=L.find(x=>x.id===id);if(!q)return;hide('mdTsume');hide('mdTsCode');beginQ(q,-1,x=>x.id);}
+ $('tsMine').addEventListener('click',e=>{
+  const d=e.target.closest('[data-del]');
+  if(d){Snd.init();if(d.classList.contains('sure'))mineDel(d.dataset.del);else{document.querySelectorAll('#tsMine .del.sure').forEach(x=>{x.classList.remove('sure');x.textContent='削除';});d.classList.add('sure');d.textContent='削除する';}return;}
+  const b=e.target.closest('[data-mine]');if(b){Snd.init();playMine(b.dataset.mine);}
+ });
  $('taRows').addEventListener('click',e=>{const tr=e.target.closest('tr');if(tr){Snd.init();showStep(+tr.dataset.k);}});
  $('tsSections').addEventListener('click',e=>{const b=e.target.closest('.ts-q');if(!b)return;Snd.init();hide('mdTsume');begin(+b.dataset.i);});
  function refresh(){
@@ -2274,18 +2682,19 @@ const Ts=(function(){
  return {
   today,list,refresh,
   start(i){begin(i);},
-  reset(){if(G.ts&&!G.busy)begin(G.ts.i);},
-  next(){if(G.ts)begin((G.ts.i+1)%TSUME.length);},
+  reset(){const g=G.ts;if(g&&!G.busy)beginQ(g.q,g.i,()=>g.key);},
+  next(){const g=G.ts;if(!g)return;if(!g.mine){begin((g.i+1)%TSUME.length);return;}const L=mine(),k=L.findIndex(x=>x.id===g.q.id);if(L.length)beginQ(L[(k+1)%L.length],-1,x=>x.id);},
+  mine,mineAdd,mineList,playMine,
   quit(){G.ts=null;document.body.classList.remove('ts-on');G.busy=true;refresh();show('mdStart');},
   hint(){if(!G.ts)return;G.ts.hint=!G.ts.hint;card();render();},
-  isLit(p){const g=G.ts,q=TSUME[g.i];return !g.answer&&g.hint&&g.used===0&&g.state==='play'&&!G.busy&&G.sel!==p&&p===at(q.first[0],q.first[1]);},
+  isLit(p){const g=G.ts,q=g.q;return !g.answer&&g.hint&&g.used===0&&g.state==='play'&&!G.busy&&G.sel!==p&&p===at(q.first[0],q.first[1]);},
   canPlay(){return G.ts.state==='play'&&!G.ts.answer;},
   // 検証用: いまの局面で残り手数以内に勝てる手を 1 つ返す
-  winningMove(){const g=G.ts,rem=TSUME[g.i].n-g.used;memo=new Map();const b=G.s.b.slice(),rep=Object.assign({},G.s.rep);for(const m of E.legal(b,1,rep))if(mv(b,1,rem,rep,m))return {from:fr(m),to:to(m)};return null;},
+  winningMove(){const g=G.ts,rem=g.q.n-g.used;memo=new Map();const b=G.s.b.slice(),rep=Object.assign({},G.s.rep);for(const m of E.legal(b,1,rep))if(mv(b,1,rem,rep,m))return {from:fr(m),to:to(m)};return null;},
   blocked(){const g=G.ts;if(g.answer){$('taMsg').textContent='答えの表示中です。「閉じる」で問題に戻れます';return;}const m=$('tsMsg');m.classList.add('bad');m.textContent=g.state==='fail'?'「最初から」でやり直せます':'解けました。「次の問題」へどうぞ';},
   answer(){if(store.get('ansMode',false))openAnswer();},closeAnswer(){closeAnswer();},step(d){step(d);},jump(k){showStep(k);},
   after(n){
-   const g=G.ts,q=TSUME[g.i];
+   const g=G.ts,q=g.q;
    if(n.turn===-1){                         // あなたが指した直後
     g.used++;
     if(n.result){if(n.result.winner===1)return clear(n);g.state='fail';card();return;}
@@ -2301,23 +2710,32 @@ const Ts=(function(){
   }
  };
  function clear(n){
-  const g=G.ts,q=TSUME[g.i];g.state='clear';G.busy=false;
+  const g=G.ts,q=g.q;g.state='clear';G.busy=false;
   g.clearText='正解　'+(n.result.reason==='origin'?'原点制圧':n.result.reason==='mate'?'詰み':'手なし')+'で勝ちました';
-  const sv=solved();sv[q.id]=1;store.set('tsSolved',sv);
-  const se=seen();if(se[q.id]){delete se[q.id];store.set('tsSeen',se);}   // 答えを見たあとに自力で解けば「解いた」に昇格する
+  const sv=solved();sv[g.key]=1;store.set('tsSolved',sv);
+  const se=seen();if(se[g.key]){delete se[g.key];store.set('tsSeen',se);}   // 答えを見たあとに自力で解けば「解いた」に昇格する
   refresh();
   Snd.fx.win();card();render();
  }
  // ---- 答え: 手の表と、盤での 1 手ずつの再生（進む／戻る）。盤の見せ方は棋譜の再生と同じ（直前の手の軌跡と、盤の下の式）
  function openAnswer(){
   const g=G.ts;if(!g||G.busy||g.answer)return;
-  const q=TSUME[g.i],a=TSUME_ANS.find(x=>x.id===q.id);if(!a)return;
+  if(g.mine&&!g.q._ans){             // 自作: 答えをその場で作る（読みで手順を作る。公式の答えと同じ規則）
+   const me=g;G.busy=true;$('tsMsg').className='';$('tsMsg').textContent='答えを作っています…';card();render();
+   TsJob.run('answer',g.q,pr=>{if(G.ts===me)$('tsMsg').textContent='答えを作っています… '+pr.pct+'%';}).then(r=>{
+    if(G.ts!==me)return;G.busy=false;
+    if(!r||!r.value){$('tsMsg').className='bad';$('tsMsg').textContent='答えを作れませんでした';card();render();return;}
+    me.q._ans=Object.assign({id:me.q.id},r.value);openAnswer();
+   });
+   return;
+  }
+  const q=g.q,a=g.mine?g.q._ans:TSUME_ANS.find(x=>x.id===q.id);if(!a)return;
   // 記録: 解く前に答えを見た問題は「答えを見た」。すでに解いた問題は、見ても何も変わらない
-  if(!solved()[q.id]){const se=seen();if(!se[q.id]){se[q.id]=1;store.set('tsSeen',se);}refresh();}
+  if(!solved()[g.key]){const se=seen();if(!se[g.key]){se[g.key]=1;store.set('tsSeen',se);}refresh();if(g.mine)mineList();}
   const states=[initial(q)],exs=[null];
   for(const m of a.line){const s0=states[states.length-1],f=at(m[0],m[1]),t=at(m[2],m[3]);exs.push(E.explain(s0.b,f,t)[0]);states.push(E.apply(s0,{from:f,to:t}));}
   g.answer={a,q,states,exs,k:0,saved:{s:G.s,stack:G.stack,lastEx:G.lastEx,sel:G.sel,moves:G.moves,hot:G.hot,ro:G.ro}};
-  $('taNo').textContent=q.id;
+  if(g.mine)$('taHead').innerHTML='答え　<b>'+escH(q.name||'無題')+'</b>';else $('taHead').innerHTML='答え　第 <b id="taNo">'+q.id+'</b> 問';
   let h='';
   a.line.forEach((m,i)=>{
    const mine=i%2===0,s0=states[i],f=at(m[0],m[1]),t=at(m[2],m[3]),ex=exs[i+1],pt=Math.abs(s0.b[f]);
@@ -2361,7 +2779,7 @@ refreshTitle();P2.refresh();
 buildFaces();buildSky();buildTitle();buildBoard();
 start(E.newGame({seed:1,first:1}));
 G.busy=true;        // タイトルを閉じるまで盤は触れない
-window.__origo={PERSONA,cleanName,PVH,store,rvBrowse,RVG,select,G,E,P,play,Snd,Tut,TUT,Ts,TSUME,TSUME_ANS,Resign,Preview,PvLink,Review,P2,V};
+window.__origo={TsLib,TsJob,Mk,TsCode,PERSONA,cleanName,PVH,store,rvBrowse,RVG,select,G,E,P,play,Snd,Tut,TUT,Ts,TSUME,TSUME_ANS,Resign,Preview,PvLink,Review,P2,V};
 ansMark();
 })();
 </script>
