@@ -170,12 +170,38 @@ body.rv-on #rvCard{display:block}
 body.rv-on #status{display:none}
 #rvCard .tc-step{white-space:nowrap}
 #rvCard .tc-foot{flex-wrap:wrap}
-#rvMsg{flex:1;font-size:12.5px;color:var(--mute);min-width:0}
+#rvMsg{flex:1 1 190px;font-size:12.5px;color:var(--mute);min-width:0}
 .rv-tabs{display:flex;gap:6px}
 .rv-tabs .btn{padding:6px 12px;font-size:12px;letter-spacing:.08em}
 .rv-tabs .btn[aria-pressed="true"]{border-color:var(--brass);color:var(--brass-hi);background:rgba(255,233,176,.08)}
 .rv-tabs[hidden]{display:none}
 #rvText b{color:var(--gold);font-weight:600}
+#rvGraphBox{margin:8px 0 2px}
+#rvGraphBox[hidden]{display:none}
+#rvGraph{display:block;width:100%;max-width:480px;margin:0 auto;height:auto;cursor:pointer;touch-action:manipulation;outline:none;border-radius:6px}
+#rvGraph:focus-visible{box-shadow:0 0 0 1px var(--brass)}
+#rvGraph .gBand{fill:rgba(255,233,176,.07)}
+#rvGraph .gZero{stroke:rgba(236,213,149,.25);stroke-width:.6}
+#rvGraph .gEdge{stroke:rgba(236,213,149,.14);stroke-width:.6}
+#rvGraph .gLbl{fill:var(--mute);font-size:8.5px;letter-spacing:.04em}
+#rvGraph .gLine{fill:none;stroke:var(--lux);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+#rvGraph .gOver{fill:none;stroke:var(--lux);stroke-width:1.2;stroke-dasharray:2.2 2.2;opacity:.75}
+#rvGraph .gBrk{fill:none;stroke:var(--lux);stroke-width:1.1}
+#rvGraph .gOmit{fill:var(--lux);font-size:8px;paint-order:stroke;stroke:#0c1233;stroke-width:3px;stroke-linejoin:round}
+#rvGraph .gKey{stroke:var(--gold);stroke-width:1.1;stroke-dasharray:1.6 1.6}
+#rvGraph .gKeySeg{fill:none;stroke:var(--gold);stroke-width:3;stroke-linecap:round}
+#rvGraph .gKeyLbl{fill:var(--gold);font-size:8.5px;font-weight:600}
+#rvGraph .gCur{stroke:#e4e9f3;stroke-width:1}
+#rvGraph .gCurDot{fill:#e4e9f3}
+#rvGraphNote{max-width:480px;margin:2px auto 0;font-size:11px;color:var(--mute);line-height:1.5;margin-top:2px}
+#rvBack{padding:6px 12px;font-size:12px;letter-spacing:.08em}#rvBack[hidden]{display:none}
+/* 長押しプレビューの囁き（盤の下端に小さく。操作は妨げない） */
+#pvHint{position:absolute;left:50%;bottom:calc(5.6% - 11px);z-index:5;max-width:94%;padding:3px 12px;border-radius:999px;pointer-events:none;white-space:nowrap;
+  font-size:clamp(10.5px,3vw,12px);letter-spacing:.02em;line-height:1.4;text-align:center;color:var(--brass-hi);
+  background:rgba(9,13,36,.86);border:1px solid var(--hair2);box-shadow:0 4px 14px rgba(0,0,0,.45);
+  opacity:0;transform:translate(-50%,-3px);transition:opacity .3s,transform .3s}
+#pvHint.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){#pvHint{transition:none}}
 #resReviewRow{margin-top:14px}#resReviewRow[hidden]{display:none}
 #resReviewRow .btn{flex:1}
 body.ts-on #tsCard{display:block}
@@ -411,7 +437,8 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
       <div class="tc-head"><span class="tc-step">ふりかえり</span><span class="ts-tools"><button class="chip" id="rvClose">閉じる</button></span></div>
       <div class="tc-title" id="rvTitle"></div>
       <div class="tc-text" id="rvText"></div>
-      <div class="tc-foot"><span id="rvMsg"></span><span class="rv-tabs" id="rvTabs" hidden><button class="btn" id="rvMine" aria-pressed="true">あなたの手</button><button class="btn" id="rvAlt" aria-pressed="false">よかった手</button></span></div>
+      <div id="rvGraphBox" hidden><svg id="rvGraph" viewBox="0 0 320 92" role="slider" tabindex="0" aria-label="形勢グラフ（タップでその手の局面を表示）" aria-valuemin="0"></svg><div id="rvGraphNote"></div></div>
+      <div class="tc-foot"><span id="rvMsg"></span><button class="btn" id="rvBack" hidden>決め手に戻る</button><span class="rv-tabs" id="rvTabs" hidden><button class="btn" id="rvMine" aria-pressed="true">あなたの手</button><button class="btn" id="rvAlt" aria-pressed="false">よかった手</button></span></div>
     </div>
     <div id="tsCard" class="plate" aria-live="polite">
       <div id="tsMain">
@@ -437,6 +464,7 @@ textarea{width:100%;background:rgba(3,4,11,.6);color:var(--text);border:1px soli
       <svg id="boardBg" viewBox="0 0 760 760" aria-hidden="true"></svg>
       <svg id="board" viewBox="0 0 760 760" role="img" aria-label="盤面（複素数平面の格子点）"></svg>
       <div id="turnToast" role="status" aria-live="polite"></div>
+      <div id="pvHint" role="status" aria-live="polite">行き先を長押しすると、味方の行き先の変化が見られます</div>
     </div>
     <div id="formula" class="plate"><div class="t" id="fmT">駒に触れると、跳べる点と変換が表示されます</div><div class="f" id="fmF">z′ = c + w(z − c)</div><div id="pvBar" hidden><span id="pvText"></span><button class="btn" id="pvNo">取り消す</button><button class="btn pri" id="pvGo">この手にする</button></div></div>
   </section>
@@ -1280,7 +1308,7 @@ function render(skip){
  }
  if(hotEx)h+=overlay(G.sel,G.hot,hotEx);
  if(G.tut)h+=Tut.marks();
- if(G.rv&&G.rv.ready)h+=rvUnder();
+ if(G.rv&&G.rv.ready&&G.rv.view===null&&G.rv.c.k>=0)h+=rvUnder();
  h+=cons;
  for(let p=0;p<NN;p++)if(thr[p]&&!b[p]){const x=px(X[p])+15,y=py(Y[p])-15;h+='<rect class="thr m-'+om+'" stroke="none" x="'+(x-2.8)+'" y="'+(y-2.8)+'" width="5.6" height="5.6" transform="rotate(45 '+x+' '+y+')"/>';}
  // 駒
@@ -1294,7 +1322,7 @@ function render(skip){
   if(thr[p]&&b[p]*G.human>0)h+='<circle class="thrR m-'+om+'" cx="'+px(X[p])+'" cy="'+py(Y[p])+'" r="41.5"/>';
  }
  if(G.pv)h+=pvMarks();
- if(G.rv&&G.rv.ready)h+=rvOver();
+ if(G.rv&&G.rv.ready&&G.rv.view===null&&G.rv.c.k>=0)h+=rvOver();
  h+=dst+'<g id="anim"></g>';
  svg.innerHTML=h;
  renderSide();
@@ -1359,9 +1387,19 @@ function select(p){
  const t=Math.abs(s.b[p]),mine=Math.sign(s.b[p])===G.human;
  $('fmT').textContent=(mine?'':'相手の ')+NAME[t]+'｜'+(G.moves.length?(G.ro&&mine?'（相手の番）':'')+'跳べる点 '+G.moves.length+' か所'+(G.ro?'':'。点を選ぶと動きます'):(t===E.K?'動ける点がありません':'今は動けません（盤内に移る変換がない、または POLUS が危険）'));
  $('fmF').innerHTML='z′ = '+LEG[t][0];
+ pvHintHide();pvHintMaybe(p);
  Snd.fx.select();render();
 }
-function deselect(){G.sel=-1;G.moves=[];G.hot=-1;render();}
+function deselect(){G.sel=-1;G.moves=[];G.hot=-1;pvHintHide();render();}
+// ---- 長押しプレビューの囁き: プレビューを一度も使っていない人に、プレビューが効く手を選んだとき、1 局に 1 回だけ出す
+const PVH={timer:0,shown:false};
+function pvHintMaybe(p){
+ if(PVH.shown||G.tut||G.ts||G.rv||G.ro||G.busy||store.get('pvUsed',false))return;
+ const s=G.s;if(!G.moves.some(t=>Preview.analyze(s,p,t)))return;   // この駒の手に、プレビューが効く手がある
+ PVH.shown=true;$('pvHint').classList.add('show');
+ clearTimeout(PVH.timer);PVH.timer=setTimeout(pvHintHide,7000);
+}
+function pvHintHide(){clearTimeout(PVH.timer);PVH.timer=0;$('pvHint').classList.remove('show');}
 function hit(e){
  let el=e.target;
  while(el&&el!==svg){if(el.dataset&&(el.dataset.to!==undefined||el.dataset.p!==undefined))return el;el=el.parentNode;}
@@ -1453,6 +1491,7 @@ function pvMarks(){
 function pvOpen(pv){
  const s=G.s,ex=E.explain(s.b,pv.from,pv.to)[0];
  G.pv=Object.assign(pv,{s,links:PvLink.pairs(s,pv.from,pv.to),pick:-1});G.hot=pv.to;
+ store.set('pvUsed',true);pvHintHide();   // 一度使ったら、囁きは二度と出さない
  showFormula('確認',pv.from,pv.to,ex,Math.abs(s.b[pv.from]));
  $('fmT').textContent+=' — この手で、味方の行き先が変わります';
  pvText();
@@ -1490,10 +1529,11 @@ function reviewStart(){
  const H=G.p2?-s.result.winner:G.human;       // 2 人対戦: 視点は敗れた側（敗因の一手と、よかった手）
  const c=Review.prepare({seed:s.seed,first:s.first,log:s.log.slice(),result:s.result},H);if(!c)return;
  hide('mdRes');
- const me={c,saved:{s:G.s,stack:G.stack,lastEx:G.lastEx,human:G.human,view:V.s},show:'mine',ready:false};
+ const me={c,saved:{s:G.s,stack:G.stack,lastEx:G.lastEx,human:G.human,view:V.s},show:'mine',ready:false,view:null};
  if(G.p2){G.human=H;viewSetNow(H<0?-1:1);}       // 視点の側を下にして見せる
  G.rv=me;document.body.classList.add('rv-on');G.sel=-1;G.moves=[];G.hot=-1;G.busy=true;
  $('rvTitle').textContent='解析中…';$('rvText').textContent='対局を最初から読み直して、形勢の分かれ目を探しています。';$('rvTabs').hidden=true;
+ $('rvGraphBox').hidden=true;$('rvBack').hidden=true;
  const N=c.states.length;
  const tick=()=>{
   if(G.rv!==me)return;
@@ -1506,7 +1546,9 @@ function reviewStart(){
 }
 function reviewShow(){
  const g=G.rv,c=g.c,win=c.outcome>0;
- if(c.k<0){$('rvTitle').textContent='決め手の一手は見つかりませんでした';$('rvText').textContent='この対局には、あなたの手がありません。';$('rvMsg').textContent='';render();return;}
+ g.view=null;$('rvBack').hidden=true;rvGraph();
+ if(c.k<0){const N=c.states.length-1;G.s=c.states[N];G.stack=c.states.slice();G.lastEx=rvLastEx(N);
+  $('rvTitle').textContent='決め手の一手は見つかりませんでした';$('rvText').textContent='この対局には、あなたの手がありません。';$('rvMsg').textContent='';render();return;}
  const s=c.states[c.k];
  G.s=s;G.stack=c.states.slice(0,c.k+1);G.lastEx=null;G.sel=-1;G.moves=[];G.hot=-1;
  $('rvTitle').textContent=(win?'勝因の一手':'敗因の一手')+'（'+(c.k+1)+' 手目）';
@@ -1523,12 +1565,65 @@ function reviewShow(){
  rvTab(g.show);
 }
 function rvTab(which){
- const g=G.rv;if(!g||!g.ready)return;g.show=which==='alt'&&g.c.alt?'alt':'mine';
+ const g=G.rv;if(!g||!g.ready)return;
+ if(g.view!==null){g.show=which;reviewShow();return;}      // 局面の閲覧中なら、決め手の表示に戻してから切り替える
+ g.show=which==='alt'&&g.c.alt?'alt':'mine';
  $('rvMine').setAttribute('aria-pressed',g.show==='mine');$('rvAlt').setAttribute('aria-pressed',g.show==='alt');
  const m=rvMove(),f=(m/NN)|0,t=m%NN,ex=E.explain(G.s.b,f,t)[0];
  showFormula(g.show==='alt'?'よかった手':G.p2?colorName(g.c.H)+'の手':'あなたの手',f,t,ex,Math.abs(G.s.b[f]));
  $('rvMsg').textContent=g.show==='alt'?'よかった手を表示中':'';
  render();
+}
+// ---- 形勢グラフ: Review の解析が計算した系列 c.v をそのまま描く（引き直さない）。x = 手数（その手のあとの局面）、y = 視点の側から見た形勢
+const RVG={W:320,H:92,L:24,R:312,T:8,B:76,CAP:800};
+const rvgX=(j,N)=>RVG.L+(RVG.R-RVG.L)*(N?j/N:0);
+const rvgY=v=>{const m=(RVG.T+RVG.B)/2,h=(RVG.B-RVG.T)/2;return m-Math.max(-1,Math.min(1,v/RVG.CAP))*h;};
+function rvLastEx(j){const c=G.rv.c,st=c.states[j];return j>0&&st.last?E.explain(c.states[j-1].b,st.last.from,st.last.to)[0]:null;}
+function rvGraph(){
+ const g=G.rv,c=g.c,v=c.v,N=v.length-1,f=x=>x.toFixed(1),CAP=RVG.CAP,who=G.p2?colorName(c.H):'あなた';
+ let h='';
+ h+='<rect class="gBand" x="'+RVG.L+'" y="'+f(rvgY(Review.T))+'" width="'+(RVG.R-RVG.L)+'" height="'+f(rvgY(-Review.T)-rvgY(Review.T))+'"/>';
+ h+='<line class="gEdge" x1="'+RVG.L+'" x2="'+RVG.R+'" y1="'+RVG.T+'" y2="'+RVG.T+'"/><line class="gEdge" x1="'+RVG.L+'" x2="'+RVG.R+'" y1="'+RVG.B+'" y2="'+RVG.B+'"/>';
+ h+='<line class="gZero" x1="'+RVG.L+'" x2="'+RVG.R+'" y1="'+f(rvgY(0))+'" y2="'+f(rvgY(0))+'"/>';
+ h+='<text class="gLbl" x="'+(RVG.L-3)+'" y="'+(RVG.T+3)+'" text-anchor="end">有利</text><text class="gLbl" x="'+(RVG.L-3)+'" y="'+f(rvgY(0)+2.6)+'" text-anchor="end">互角</text><text class="gLbl" x="'+(RVG.L-3)+'" y="'+(RVG.B+1)+'" text-anchor="end">不利</text>';
+ h+='<text class="gLbl" x="'+RVG.L+'" y="'+(RVG.H-4)+'">0</text><text class="gLbl" x="'+RVG.R+'" y="'+(RVG.H-4)+'" text-anchor="end">'+N+' 手</text>';
+ // 決め手: その手（k+1 手目）の前後の区間を太く、手のあとの位置に縦線
+ if(c.k>=0){const x=rvgX(c.k+1,N);
+  h+='<line class="gKey" x1="'+f(x)+'" x2="'+f(x)+'" y1="'+RVG.T+'" y2="'+RVG.B+'"/>';
+  h+='<path class="gKeySeg" d="M'+f(rvgX(c.k,N))+' '+f(rvgY(v[c.k]))+'L'+f(x)+' '+f(rvgY(v[c.k+1]))+'"/>';
+  h+='<text class="gKeyLbl" x="'+f(Math.min(RVG.R-30,Math.max(RVG.L+2,x+3)))+'" y="'+(RVG.H-4)+'">'+(c.k+1)+' 手目</text>';}
+ // 線: 上限（±CAP）の中は実線、上限を超えた所は端に止めて破線（値は省略）。超え始めに波の印と「以降 省略」
+ const over=x=>Math.abs(x)>CAP;let solid='',dash='',omit=null;
+ for(let j=0;j<N;j++){const a='M'+f(rvgX(j,N))+' '+f(rvgY(v[j])),b='L'+f(rvgX(j+1,N))+' '+f(rvgY(v[j+1]));
+  if(over(v[j])&&over(v[j+1])&&Math.sign(v[j])===Math.sign(v[j+1]))dash+=a+b;else solid+=a+b;}
+ h+='<path class="gLine" d="'+solid+'"/>'+(dash?'<path class="gOver" d="'+dash+'"/>':'');
+ for(let j=0;j<=N;j++)if(over(v[j])&&(j===0||!over(v[j-1])||Math.sign(v[j-1])!==Math.sign(v[j]))){
+  const x=rvgX(j,N),y=rvgY(v[j]),up=v[j]>0,dy=up?-1:1;
+  h+='<path class="gBrk" d="M'+f(x-3)+' '+f(y-dy*3)+'l2 '+(dy*-2)+'l2 '+(dy*2)+'l2 '+(dy*-2)+'"/>';
+  if(omit===null)omit={x,y,up};}
+ if(omit)h+='<text class="gOmit" x="'+f(Math.min(RVG.R-2,Math.max(RVG.L+34,omit.x-4)))+'" y="'+f(omit.up?omit.y+9:omit.y-4)+'" text-anchor="end">以降 省略 '+(omit.up?'▲':'▼')+'</text>';
+ // 閲覧中の局面
+ if(g.view!==null){const x=rvgX(g.view,N);h+='<line class="gCur" x1="'+f(x)+'" x2="'+f(x)+'" y1="'+RVG.T+'" y2="'+RVG.B+'"/><circle class="gCurDot" cx="'+f(x)+'" cy="'+f(rvgY(v[g.view]))+'" r="2.6"/>';}
+ const el=$('rvGraph');el.innerHTML=h;el.setAttribute('aria-valuemax',N);el.setAttribute('aria-valuenow',g.view===null?(c.k>=0?c.k+1:N):g.view);
+ $('rvGraphNote').textContent='形勢（'+who+'から見て）。帯＝互角（±'+Review.T+'）。破線＝表示の上限 ±'+CAP+' を超えた所（勝ち負けが見えた局面など。値は省略）。タップでその手の局面';
+ $('rvGraphBox').hidden=false;
+}
+// 閲覧: j 手のあとの局面を盤に出す（指し直しはできない。盤はふりかえり中、触れても何もしない）
+function rvBrowse(j){
+ const g=G.rv;if(!g||!g.ready)return;const c=g.c,N=c.states.length-1;j=Math.max(0,Math.min(N,j|0));
+ g.view=j;G.s=c.states[j];G.stack=c.states.slice(0,j+1);G.lastEx=rvLastEx(j);G.sel=-1;G.moves=[];G.hot=-1;
+ const st=c.states[j],v=c.v[j];
+ if(j>0&&st.last){showFormula(j+' 手目',st.last.from,st.last.to,G.lastEx,Math.abs(st.b[st.last.to]));}
+ else{$('fmT').textContent='初期局面';$('fmF').innerHTML='z′ = c + w(z − c)';}
+ const k=Math.abs(v)>=90000?(v>0?'勝ちが見えた':'負けが見えた'):CLS_JP[String(Review.cls(v))];
+ $('rvMsg').textContent=(j?j+' 手目のあと':'初期局面')+'（形勢 '+k+'）を表示中・閲覧のみ';
+ $('rvBack').hidden=false;$('rvBack').textContent=c.k>=0?'決め手に戻る':'最後の局面に戻る';
+ rvGraph();render();
+}
+function rvGraphPick(e){
+ const g=G.rv;if(!g||!g.ready)return;const r=$('rvGraph').getBoundingClientRect(),N=g.c.states.length-1;
+ const x=(e.clientX-r.left)/r.width*RVG.W,j=Math.round((x-RVG.L)/(RVG.R-RVG.L)*N);
+ Snd.fx.select();rvBrowse(j);
 }
 function reviewClose(){
  const g=G.rv;if(!g)return;
@@ -1541,6 +1636,7 @@ function reviewClose(){
 
 // ---------- 進行 ----------
 function play(a){
+ pvHintHide();
  const s=G.s,ex=E.explain(s.b,a.from,a.to)[0],t=Math.abs(s.b[a.from]),cap=s.b[a.to]!==0,mover=s.turn;
  const n=E.apply(s,a);if(!n)return;
  G.busy=true;G.sel=-1;G.moves=[];G.hot=-1;
@@ -1625,6 +1721,7 @@ function start(s,p2){
  G.ts=null;document.body.classList.remove('ts-on');
  G.rv=null;document.body.classList.remove('rv-on');
  G.p2=p2||null;G.human=p2?s.turn:1;
+ PVH.shown=false;pvHintHide();               // 囁きは 1 局に 1 回まで
  viewSetNow(p2&&P.rot&&s.turn<0?-1:1);
  G.s=s;G.stack=[s];G.sel=-1;G.moves=[];G.hot=-1;G.busy=false;G.lastEx=null;
  $('fmT').textContent='駒に触れると、跳べる点と変換が表示されます';$('fmF').innerHTML='z′ = c + w(z − c)';
@@ -1813,6 +1910,10 @@ $('resView').onclick=()=>hide('mdRes');
 $('resReview').onclick=()=>{Snd.init();reviewStart();};
 $('rvClose').onclick=()=>{Snd.init();reviewClose();};
 $('rvMine').onclick=()=>rvTab('mine');
+$('rvGraph').addEventListener('click',rvGraphPick);
+$('rvGraph').addEventListener('keydown',e=>{const g=G.rv;if(!g||!g.ready)return;const N=g.c.states.length-1,cur=g.view===null?(g.c.k>=0?g.c.k+1:N):g.view;
+ const d={ArrowLeft:-1,ArrowRight:1,Home:-1e9,End:1e9}[e.key];if(d===undefined)return;e.preventDefault();rvBrowse(cur+d);});
+$('rvBack').onclick=()=>{Snd.fx.deselect();reviewShow();};
 $('rvAlt').onclick=()=>rvTab('alt');
 $('pvGo').onclick=()=>{Snd.init();if(G.pv&&!G.busy)pvCommit();};
 $('pvNo').onclick=()=>{Snd.init();if(G.pv)pvCancel();};
@@ -2191,7 +2292,7 @@ refreshTitle();P2.refresh();
 buildFaces();buildSky();buildTitle();buildBoard();
 start(E.newGame({seed:1,first:1}));
 G.busy=true;        // タイトルを閉じるまで盤は触れない
-window.__origo={G,E,P,play,Snd,Tut,TUT,Ts,TSUME,TSUME_ANS,Resign,Preview,PvLink,Review,P2,V};
+window.__origo={PVH,store,rvBrowse,RVG,select,G,E,P,play,Snd,Tut,TUT,Ts,TSUME,TSUME_ANS,Resign,Preview,PvLink,Review,P2,V};
 ansMark();
 })();
 </script>
